@@ -5,8 +5,11 @@ import com.rahicabs.dto.PaymentRequest;
 import com.rahicabs.entity.*;
 import com.rahicabs.repository.BookingRepository;
 import com.rahicabs.repository.PaymentRepository;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +34,36 @@ public class PaymentService {
     @Value("${app.razorpay.key-secret:}")
     private String razorpayKeySecret;
 
-    public Map<String, Object> createOrder(Customer customer, Booking booking, Double amount) {
-        // Create Razorpay order
-        String orderId = "order_" + System.currentTimeMillis();
+    private boolean isConfigured() {
+        return razorpayKeyId   != null && !razorpayKeyId.isBlank()   && !razorpayKeyId.startsWith("your_")
+            && razorpayKeySecret != null && !razorpayKeySecret.isBlank() && !razorpayKeySecret.startsWith("your_");
+    }
 
-        // Create payment record
+    public Map<String, Object> createOrder(Customer customer, Booking booking, Double amount) {
+        long amountPaise = Math.round(amount * 100);
+        String orderId;
+
+        if (isConfigured()) {
+            try {
+                RazorpayClient client = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
+                JSONObject req = new JSONObject();
+                req.put("amount",          amountPaise);
+                req.put("currency",        "INR");
+                req.put("receipt",         "rcpt_bk" + booking.getId());
+                req.put("payment_capture", 1);
+                com.razorpay.Order rzpOrder = client.orders.create(req);
+                orderId = rzpOrder.get("id");
+                log.info("Razorpay order created: {} for booking #{}", orderId, booking.getId());
+            } catch (RazorpayException e) {
+                log.error("Razorpay order creation failed: {}", e.getMessage());
+                throw new RuntimeException("Payment gateway error. Please try again later.");
+            }
+        } else {
+            // Dev mode: no real API call, checkout popup will not work for real payments
+            log.warn("Razorpay keys not set — using dev mock order (configure app.razorpay.key-id/key-secret to go live)");
+            orderId = "order_dev_" + System.currentTimeMillis();
+        }
+
         Payment payment = Payment.builder()
                 .customer(customer)
                 .booking(booking)
@@ -44,50 +72,45 @@ public class PaymentService {
                 .paymentType(PaymentType.ADVANCE)
                 .paymentStatus(PaymentStatus.PENDING)
                 .build();
-        
         paymentRepository.save(payment);
 
         Map<String, Object> orderData = new HashMap<>();
-        orderData.put("orderId", orderId);
-        orderData.put("amount", amount * 100); // Convert to paise
+        orderData.put("orderId",  orderId);
+        orderData.put("amount",   amountPaise);   // Razorpay expects paise
         orderData.put("currency", "INR");
-        orderData.put("keyId", razorpayKeyId);
+        orderData.put("keyId",    razorpayKeyId);
 
         return orderData;
     }
 
     @Transactional
     public ApiResponse verifyPayment(PaymentRequest request) {
-        // Find payment
         Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
-        // Verify signature
-        try {
-            String generated_signature = hmacSha256(
-                    request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId(),
-                    razorpayKeySecret
-            );
+        // Dev mock: skip signature verification
+        if (request.getRazorpayOrderId().startsWith("order_dev_")) {
+            log.warn("Dev mock order — skipping signature verification");
+            markPaymentSuccess(payment, request.getRazorpayPaymentId(), "dev_mock_sig");
+            return ApiResponse.ok("Payment recorded (dev mode)");
+        }
 
-            if (!generated_signature.equals(request.getRazorpaySignature())) {
+        if (!isConfigured()) {
+            return ApiResponse.error("Razorpay keys not configured on server");
+        }
+
+        try {
+            String expectedSig = hmacSha256(
+                    request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId(),
+                    razorpayKeySecret);
+
+            if (!expectedSig.equals(request.getRazorpaySignature())) {
                 payment.setPaymentStatus(PaymentStatus.FAILED);
                 paymentRepository.save(payment);
-                return ApiResponse.error("Payment verification failed");
+                return ApiResponse.error("Payment verification failed — signature mismatch");
             }
 
-            // Update payment
-            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-            payment.setRazorpaySignature(request.getRazorpaySignature());
-            payment.setPaymentStatus(PaymentStatus.SUCCESS);
-            payment.setPaymentDate(LocalDateTime.now());
-            paymentRepository.save(payment);
-
-            // Update booking
-            Booking booking = payment.getBooking();
-            booking.setAdvancePaid(true);
-            booking.setStatus(BookingStatus.CONFIRMED);
-            bookingRepository.save(booking);
-
+            markPaymentSuccess(payment, request.getRazorpayPaymentId(), request.getRazorpaySignature());
             return ApiResponse.ok("Payment verified successfully");
 
         } catch (Exception e) {
@@ -98,16 +121,25 @@ public class PaymentService {
         }
     }
 
+    private void markPaymentSuccess(Payment payment, String paymentId, String signature) {
+        payment.setRazorpayPaymentId(paymentId);
+        payment.setRazorpaySignature(signature);
+        payment.setPaymentStatus(PaymentStatus.SUCCESS);
+        payment.setPaymentDate(LocalDateTime.now());
+        paymentRepository.save(payment);
+
+        Booking booking = payment.getBooking();
+        booking.setAdvancePaid(true);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        bookingRepository.save(booking);
+    }
+
     private String hmacSha256(String data, String secret) throws Exception {
-        Mac sha256_HMAC = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secret_key = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        sha256_HMAC.init(secret_key);
-        byte[] hash = sha256_HMAC.doFinal(data.getBytes());
-        
-        StringBuilder result = new StringBuilder();
-        for (byte b : hash) {
-            result.append(String.format("%02x", b));
-        }
-        return result.toString();
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(), "HmacSHA256"));
+        byte[] hash = mac.doFinal(data.getBytes());
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hash) sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 }
