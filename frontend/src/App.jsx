@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CustomerProvider, useCustomer } from './context/CustomerContext'
+import { ToastProvider } from './context/ToastContext'
 import Home         from './pages/Home'
 import Login        from './pages/Login'
 import Register     from './pages/Register'
@@ -28,8 +29,9 @@ function CustomerProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CustomerProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <CustomerProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/"        element={<Home />} />
@@ -59,5 +61,6 @@ export default function App() {
         </BrowserRouter>
       </CustomerProvider>
     </AuthProvider>
+    </ToastProvider>
   )
 }

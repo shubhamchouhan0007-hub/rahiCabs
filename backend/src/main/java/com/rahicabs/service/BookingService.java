@@ -6,6 +6,8 @@ import com.rahicabs.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.rahicabs.entity.Role;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -102,16 +104,31 @@ public class BookingService {
         return BookingResponse.from(bookingRepository.save(booking));
     }
 
-    public Map<String, Long> getAdminStats() {
-        return Map.of(
-            "total",      bookingRepository.count(),
-            "pending",    bookingRepository.countByStatus(BookingStatus.PENDING),
-            "confirmed",  bookingRepository.countByStatus(BookingStatus.CONFIRMED),
-            "inProgress", bookingRepository.countByStatus(BookingStatus.IN_PROGRESS),
-            "completed",  bookingRepository.countByStatus(BookingStatus.COMPLETED),
-            "cancelled",  bookingRepository.countByStatus(BookingStatus.CANCELLED),
-            "totalUsers", userRepository.count()
-        );
+    public Map<String, Object> getAdminStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total",        bookingRepository.count());
+        stats.put("pending",      bookingRepository.countByStatus(BookingStatus.PENDING));
+        stats.put("confirmed",    bookingRepository.countByStatus(BookingStatus.CONFIRMED));
+        stats.put("inProgress",   bookingRepository.countByStatus(BookingStatus.IN_PROGRESS));
+        stats.put("completed",    bookingRepository.countByStatus(BookingStatus.COMPLETED));
+        stats.put("cancelled",    bookingRepository.countByStatus(BookingStatus.CANCELLED));
+        stats.put("totalUsers",   userRepository.count());
+        stats.put("totalDrivers", userRepository.countByRole(Role.DRIVER));
+        Double revenue = bookingRepository.sumFareByStatus(BookingStatus.COMPLETED);
+        stats.put("totalRevenue", revenue != null ? revenue : 0.0);
+        return stats;
+    }
+
+    public Map<String, Object> getDriverStats(User driver) {
+        List<BookingResponse> rides = getDriverRides(driver);
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total",     rides.size());
+        stats.put("completed", rides.stream().filter(r -> "COMPLETED".equals(r.getStatus())).count());
+        stats.put("pending",   rides.stream().filter(r -> "PENDING".equals(r.getStatus())).count());
+        stats.put("inProgress",rides.stream().filter(r -> "IN_PROGRESS".equals(r.getStatus())).count());
+        Double earnings = bookingRepository.sumFareByDriver(driver);
+        stats.put("totalEarnings", earnings != null ? earnings : 0.0);
+        return stats;
     }
 
     // ---- DRIVER ----

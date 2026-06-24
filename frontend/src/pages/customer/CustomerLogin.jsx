@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomer } from '../../context/CustomerContext';
 import customerApi from '../../services/customerApi';
@@ -13,6 +13,23 @@ export default function CustomerLogin() {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const startCountdown = () => {
+    setCountdown(60);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) { clearInterval(timerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const sendOtp = async (e) => {
     e.preventDefault();
@@ -28,6 +45,7 @@ export default function CustomerLogin() {
     try {
       await customerApi.sendOtp(phoneNumber);
       setOtpSent(true);
+      startCountdown();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP');
     } finally {
@@ -114,6 +132,8 @@ export default function CustomerLogin() {
                 setOtpSent(false);
                 setOtp('');
                 setError('');
+                clearInterval(timerRef.current);
+                setCountdown(0);
               }}
             >
               Change Phone Number
@@ -122,9 +142,9 @@ export default function CustomerLogin() {
               type="button"
               className="btn-link"
               onClick={sendOtp}
-              disabled={loading}
+              disabled={loading || countdown > 0}
             >
-              Resend OTP
+              {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
             </button>
           </form>
         )}

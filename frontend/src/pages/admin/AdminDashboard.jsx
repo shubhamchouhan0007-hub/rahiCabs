@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
+import { useToast } from '../../context/ToastContext'
 import '../client/Client.css'
 
 const NAV = [
@@ -33,22 +34,26 @@ function AdminHome() {
     <div>
       <h2 className="page-title">Admin Dashboard</h2>
       <div className="stats-grid">
-        <StatCard label="Total Bookings" value={stats.total}      icon="fas fa-ticket-alt"   color="#3b82f6" />
-        <StatCard label="Pending"        value={stats.pending}    icon="fas fa-clock"         color="#f59e0b" />
-        <StatCard label="In Progress"    value={stats.inProgress} icon="fas fa-car"           color="#8b5cf6" />
-        <StatCard label="Completed"      value={stats.completed}  icon="fas fa-check-circle"  color="#10b981" />
-        <StatCard label="Cancelled"      value={stats.cancelled}  icon="fas fa-times-circle"  color="#ef4444" />
-        <StatCard label="Total Users"    value={stats.totalUsers} icon="fas fa-users"          color="#06b6d4" />
+        <StatCard label="Total Bookings"  value={stats.total}        icon="fas fa-ticket-alt"    color="#3b82f6" />
+        <StatCard label="Pending"         value={stats.pending}      icon="fas fa-clock"          color="#f59e0b" />
+        <StatCard label="In Progress"     value={stats.inProgress}   icon="fas fa-car"            color="#8b5cf6" />
+        <StatCard label="Completed"       value={stats.completed}    icon="fas fa-check-circle"   color="#10b981" />
+        <StatCard label="Cancelled"       value={stats.cancelled}    icon="fas fa-times-circle"   color="#ef4444" />
+        <StatCard label="Total Users"     value={stats.totalUsers}   icon="fas fa-users"           color="#06b6d4" />
+        <StatCard label="Total Drivers"   value={stats.totalDrivers} icon="fas fa-id-card"         color="#7c3aed" />
+        <StatCard label="Revenue (₹)"     value={stats.totalRevenue != null ? `₹${Number(stats.totalRevenue).toLocaleString('en-IN', {maximumFractionDigits:0})}` : '₹0'} icon="fas fa-rupee-sign" color="#059669" />
       </div>
     </div>
   )
 }
 
 function AdminBookings() {
+  const toast = useToast()
   const [bookings, setBookings] = useState([])
   const [drivers,  setDrivers]  = useState([])
   const [loading,  setLoading]  = useState(true)
-  const [msg, setMsg]           = useState(null)
+  const [search,   setSearch]   = useState('')
+  const [filter,   setFilter]   = useState('ALL')
 
   const load = () => Promise.all([api.get('/admin/bookings'), api.get('/admin/drivers')])
     .then(([b, d]) => { setBookings(b.data); setDrivers(d.data); setLoading(false) })
@@ -56,35 +61,65 @@ function AdminBookings() {
   useEffect(() => { load() }, [])
 
   const assign = async (bookingId, driverId) => {
-    try { await api.put(`/admin/bookings/${bookingId}/assign-driver/${driverId}`); load(); setMsg({ type:'success', text:'Driver assigned!' }) }
-    catch { setMsg({ type:'error', text:'Failed to assign driver.' }) }
+    try { await api.put(`/admin/bookings/${bookingId}/assign-driver/${driverId}`); load(); toast('Driver assigned successfully!', 'success') }
+    catch { toast('Failed to assign driver.', 'error') }
   }
 
   const updateStatus = async (id, status) => {
-    try { await api.put(`/admin/bookings/${id}/status?status=${status}`); load() }
-    catch { setMsg({ type:'error', text:'Failed to update status.' }) }
+    try { await api.put(`/admin/bookings/${id}/status?status=${status}`); load(); toast('Status updated!', 'success') }
+    catch { toast('Failed to update status.', 'error') }
   }
+
+  const visible = bookings.filter(b => {
+    const q = search.toLowerCase()
+    const matchSearch = !q ||
+      (b.clientName  && b.clientName.toLowerCase().includes(q)) ||
+      (b.clientPhone && b.clientPhone.includes(q)) ||
+      (b.guestName   && b.guestName.toLowerCase().includes(q)) ||
+      (b.guestPhone  && b.guestPhone.includes(q)) ||
+      (b.pickupLocation && b.pickupLocation.toLowerCase().includes(q)) ||
+      (b.dropLocation   && b.dropLocation.toLowerCase().includes(q))
+    const matchFilter = filter === 'ALL' || b.status === filter
+    return matchSearch && matchFilter
+  })
 
   return (
     <div>
       <h2 className="page-title">All Bookings</h2>
-      {msg && <div className={`alert alert-${msg.type === 'success' ? 'success' : 'danger'} mb-16`}>{msg.text}</div>}
+      <div className="admin-toolbar">
+        <div className="search-box">
+          <i className="fas fa-search" />
+          <input type="text" placeholder="Search by name, phone, location…"
+            value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button className="search-clear" onClick={() => setSearch('')}>✕</button>}
+        </div>
+        <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
+          <option value="ALL">All Statuses</option>
+          {['PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s =>
+            <option key={s} value={s}>{s.replace('_',' ')}</option>)}
+        </select>
+        <span className="result-count">{visible.length} booking{visible.length !== 1 ? 's' : ''}</span>
+      </div>
       <div className="card">
-        {loading ? <Spinner /> : bookings.length === 0
-          ? <div className="empty-state"><i className="fas fa-inbox" /><p>No bookings found.</p></div>
+        {loading ? <Spinner /> : visible.length === 0
+          ? <div className="empty-state"><i className="fas fa-inbox" /><p>{search || filter !== 'ALL' ? 'No matching bookings.' : 'No bookings found.'}</p></div>
           : (
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
+                <tr><th>#</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Fare</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
               </thead>
               <tbody>
-                {bookings.map(b => (
+                {visible.map(b => (
                   <tr key={b.id}>
                     <td>#{b.id}</td>
-                    <td>{b.clientName}<br /><small className="muted">{b.clientPhone}</small></td>
+                    <td>
+                      {b.clientName || b.guestName || '—'}
+                      <br /><small className="muted">{b.clientPhone || b.guestPhone || ''}</small>
+                    </td>
                     <td>{b.pickupLocation}<br /><small className="muted">→ {b.dropLocation}</small></td>
                     <td><span className="tag">{b.serviceType.replace('_',' ')}</span></td>
+                    <td>{b.fare ? <span className="fare-cell">₹{Number(b.fare).toLocaleString('en-IN',{maximumFractionDigits:0})}</span> : <span className="muted">—</span>}</td>
                     <td><StatusBadge status={b.status} /></td>
                     <td>{b.driverName || <span className="muted">—</span>}</td>
                     <td>
@@ -113,9 +148,14 @@ function AdminBookings() {
 }
 
 function AdminDrivers() {
+  const toast = useToast()
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => { api.get('/admin/drivers').then(r => { setDrivers(r.data); setLoading(false) }).catch(() => {}) }, [])
+  useEffect(() => {
+    api.get('/admin/drivers')
+      .then(r => { setDrivers(r.data); setLoading(false) })
+      .catch(() => toast('Failed to load drivers.', 'error'))
+  }, [])
 
   return (
     <div>
@@ -151,9 +191,14 @@ function AdminDrivers() {
 }
 
 function AdminUsers() {
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => { api.get('/admin/users').then(r => { setUsers(r.data); setLoading(false) }).catch(() => {}) }, [])
+  useEffect(() => {
+    api.get('/admin/users')
+      .then(r => { setUsers(r.data); setLoading(false) })
+      .catch(() => toast('Failed to load users.', 'error'))
+  }, [])
 
   const roleColor = { CLIENT:'info', ADMIN:'purple', DRIVER:'success' }
 

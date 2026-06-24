@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -55,6 +55,8 @@ export default function GuestBooking() {
   // OTP
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef(null);
   
   // Loading & errors
   const [loading, setLoading] = useState(false);
@@ -62,6 +64,21 @@ export default function GuestBooking() {
 
   // Default map center (Kolkata)
   const [mapCenter, setMapCenter] = useState([22.5726, 88.3639]);
+
+  useEffect(() => {
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const startCountdown = () => {
+    setCountdown(60);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) { clearInterval(timerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     // Get user's current location
@@ -202,6 +219,7 @@ export default function GuestBooking() {
       await customerApi.sendOtp(phoneNumber);
       setOtpSent(true);
       setStep(3);
+      startCountdown();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP');
     } finally {
@@ -485,8 +503,8 @@ export default function GuestBooking() {
           <button className="btn-primary" onClick={handleBooking} disabled={loading || otp.length !== 6}>
             {loading ? 'Processing...' : 'Proceed to Payment'}
           </button>
-          <button className="btn-secondary" onClick={() => sendOtp()}>
-            Resend OTP
+          <button className="btn-secondary" onClick={sendOtp} disabled={loading || countdown > 0}>
+            {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
           </button>
         </div>
       )}

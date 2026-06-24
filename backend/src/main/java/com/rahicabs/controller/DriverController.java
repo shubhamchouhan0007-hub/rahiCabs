@@ -26,6 +26,11 @@ public class DriverController {
         return ResponseEntity.ok(bookingService.getDriverRides(user));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> myStats(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(bookingService.getDriverStats(user));
+    }
+
     @PutMapping("/rides/{id}/status")
     public ResponseEntity<BookingResponse> updateStatus(@PathVariable Long id,
                                                         @RequestParam BookingStatus status,

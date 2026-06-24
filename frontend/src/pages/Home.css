@@ -291,6 +291,26 @@
 .h-book-note a { color: #1a1a6e; font-weight: 700; text-decoration: none; }
 .h-book-note a:hover { text-decoration: underline; }
 
+/* ---- Location Autocomplete ---- */
+.h-autocomplete-wrap { position: relative; }
+.h-autocomplete-wrap input { width: 100%; }
+.h-autocomplete-spinner { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #1a1a6e; pointer-events: none; }
+.h-suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); z-index: 999; list-style: none; margin: 0; padding: 6px 0; max-height: 220px; overflow-y: auto; }
+.h-suggestions li { padding: 10px 14px; font-size: .85rem; color: #334155; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+.h-suggestions li i { color: #f5a623; flex-shrink: 0; margin-top: 2px; }
+.h-suggestions li:hover { background: #f1f5f9; }
+
+/* ---- Fare Estimate bar ---- */
+.h-fare-estimate {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: linear-gradient(135deg,#f0fdf4,#ecfdf5);
+  border: 1.5px solid #a7f3d0; border-radius: 12px;
+  font-size: .88rem; color: #065f46; margin-bottom: 2px; flex-wrap: wrap;
+}
+.h-fare-estimate i { color: #059669; }
+.h-fare-amount { font-size: 1.15rem; font-weight: 800; color: #065f46; margin-left: auto; }
+.h-fare-estimate small { color: #6b7280; font-size: .78rem; width: 100%; margin-top: 2px; }
+
 /* ============ CHECK BOOKING ============ */
 .h-check-section { background: linear-gradient(135deg,#1a1a6e 0%,#4a4ac8 100%); padding: 80px 0; }
 .h-check-section .h-section-header h2 { color: #fff; }

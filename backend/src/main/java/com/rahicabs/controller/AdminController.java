@@ -23,13 +23,27 @@ public class AdminController {
     private final DriverProfileRepository driverProfileRepository;
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Long>> stats() {
+    public ResponseEntity<Map<String, Object>> stats() {
         return ResponseEntity.ok(bookingService.getAdminStats());
     }
 
     @GetMapping("/bookings")
-    public ResponseEntity<List<BookingResponse>> allBookings() {
-        return ResponseEntity.ok(bookingService.getAllBookings());
+    public ResponseEntity<List<BookingResponse>> allBookings(@RequestParam(required = false) String search,
+                                                              @RequestParam(required = false) String status) {
+        List<BookingResponse> all = bookingService.getAllBookings();
+        if (search != null && !search.isBlank()) {
+            String q = search.trim().toLowerCase();
+            all = all.stream().filter(b ->
+                (b.getClientName() != null && b.getClientName().toLowerCase().contains(q)) ||
+                (b.getClientPhone() != null && b.getClientPhone().toLowerCase().contains(q)) ||
+                (b.getPickupLocation() != null && b.getPickupLocation().toLowerCase().contains(q)) ||
+                (b.getDropLocation() != null && b.getDropLocation().toLowerCase().contains(q))
+            ).collect(java.util.stream.Collectors.toList());
+        }
+        if (status != null && !status.isBlank() && !status.equals("ALL")) {
+            all = all.stream().filter(b -> b.getStatus() != null && status.equals(b.getStatus().name())).collect(java.util.stream.Collectors.toList());
+        }
+        return ResponseEntity.ok(all);
     }
 
     @PutMapping("/bookings/{id}/assign-driver/{driverId}")

@@ -19,13 +19,80 @@ export default function Home() {
   const [bookStatus, setBookStatus] = useState(null) // {type, msg, bookingId}
   const [bookLoading, setBookLoading] = useState(false)
 
-  const handleBookChange = e => setBookForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  // Location autocomplete
+  const [pickupSuggestions, setPickupSuggestions] = useState([])
+  const [dropSuggestions, setDropSuggestions] = useState([])
+  const [pickupLoading, setPickupLoading] = useState(false)
+  const [dropLoading, setDropLoading] = useState(false)
+  const pickupTimer = useRef(null)
+  const dropTimer   = useRef(null)
+  const pickupCoord = useRef(null)   // { lat, lon }
+  const dropCoord   = useRef(null)
+  const [fareEst, setFareEst] = useState(null)
+
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371, toRad = d => d * Math.PI / 180
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
+  const recalcFare = (pc, dc) => {
+    if (pc && dc) {
+      const dist = haversineKm(pc.lat, pc.lon, dc.lat, dc.lon)
+      setFareEst({ dist: dist.toFixed(1), fare: Math.max(150, Math.round(dist * 11)) })
+    } else {
+      setFareEst(null)
+    }
+  }
+
+  const fetchSuggestions = (query, setSuggestions, setLoading) => {
+    if (!query || query.length < 3) { setSuggestions([]); return }
+    setLoading(true)
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in`)
+      .then(r => r.json())
+      .then(data => setSuggestions(data))
+      .catch(() => setSuggestions([]))
+      .finally(() => setLoading(false))
+  }
+
+  const handleBookChange = e => {
+    const { name, value } = e.target
+    setBookForm(f => ({ ...f, [name]: value }))
+    if (name === 'pickupLocation') {
+      clearTimeout(pickupTimer.current)
+      pickupCoord.current = null; recalcFare(null, dropCoord.current)
+      pickupTimer.current = setTimeout(() => fetchSuggestions(value, setPickupSuggestions, setPickupLoading), 350)
+    }
+    if (name === 'dropLocation') {
+      clearTimeout(dropTimer.current)
+      dropCoord.current = null; recalcFare(pickupCoord.current, null)
+      dropTimer.current = setTimeout(() => fetchSuggestions(value, setDropSuggestions, setDropLoading), 350)
+    }
+  }
+
+  const selectSuggestion = (field, item) => {
+    const label = item.display_name.split(',').slice(0, 3).join(',')
+    setBookForm(f => ({ ...f, [field]: label }))
+    if (field === 'pickupLocation') {
+      pickupCoord.current = { lat: parseFloat(item.lat), lon: parseFloat(item.lon) }
+      setPickupSuggestions([])
+    }
+    if (field === 'dropLocation') {
+      dropCoord.current = { lat: parseFloat(item.lat), lon: parseFloat(item.lon) }
+      setDropSuggestions([])
+    }
+    recalcFare(
+      field === 'pickupLocation' ? { lat: parseFloat(item.lat), lon: parseFloat(item.lon) } : pickupCoord.current,
+      field === 'dropLocation'   ? { lat: parseFloat(item.lat), lon: parseFloat(item.lon) } : dropCoord.current
+    )
+  }
 
   const handleBookSubmit = async e => {
     e.preventDefault()
     setBookLoading(true); setBookStatus(null)
     try {
-      const payload = { ...bookForm, scheduledAt: bookForm.scheduledAt ? bookForm.scheduledAt + ':00' : null }
+      const payload = { ...bookForm, scheduledAt: bookForm.scheduledAt ? bookForm.scheduledAt + ':00' : null, fare: fareEst ? fareEst.fare : null }
       const res = await axios.post('/api/public/bookings', payload)
       setBookStatus({ type:'success', msg:`Booking confirmed! Your Booking ID is #${res.data.id}. Save your phone number to track it.`, bookingId: res.data.id })
       setBookForm({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'CITY_TAXI', scheduledAt:'', notes:'' })
@@ -283,13 +350,45 @@ export default function Home() {
               <div className="h-book-row">
                 <div className="h-fg">
                   <label><i className="fas fa-map-marker-alt" /> Pickup Location *</label>
-                  <input name="pickupLocation" value={bookForm.pickupLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required />
+                  <div className="h-autocomplete-wrap">
+                    <input name="pickupLocation" value={bookForm.pickupLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required autoComplete="off" />
+                    {pickupLoading && <span className="h-autocomplete-spinner"><i className="fas fa-spinner fa-spin" /></span>}
+                    {pickupSuggestions.length > 0 && (
+                      <ul className="h-suggestions">
+                        {pickupSuggestions.map((s, i) => (
+                          <li key={i} onMouseDown={() => selectSuggestion('pickupLocation', s)}>
+                            <i className="fas fa-map-marker-alt" /> {s.display_name.split(',').slice(0,4).join(',')}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
                 <div className="h-fg">
                   <label><i className="fas fa-flag-checkered" /> Drop Location *</label>
-                  <input name="dropLocation" value={bookForm.dropLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required />
+                  <div className="h-autocomplete-wrap">
+                    <input name="dropLocation" value={bookForm.dropLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required autoComplete="off" />
+                    {dropLoading && <span className="h-autocomplete-spinner"><i className="fas fa-spinner fa-spin" /></span>}
+                    {dropSuggestions.length > 0 && (
+                      <ul className="h-suggestions">
+                        {dropSuggestions.map((s, i) => (
+                          <li key={i} onMouseDown={() => selectSuggestion('dropLocation', s)}>
+                            <i className="fas fa-map-marker-alt" /> {s.display_name.split(',').slice(0,4).join(',')}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
+              {fareEst && (
+                <div className="h-fare-estimate">
+                  <i className="fas fa-route" />
+                  <span>Estimated: <b>{fareEst.dist} km</b></span>
+                  <span className="h-fare-amount">≈ ₹{fareEst.fare.toLocaleString('en-IN')}</span>
+                  <small>(at ₹11/km, min ₹150)</small>
+                </div>
+              )}
               <div className="h-book-row">
                 <div className="h-fg">
                   <label><i className="fas fa-taxi" /> Service Type *</label>
@@ -299,7 +398,7 @@ export default function Home() {
                 </div>
                 <div className="h-fg">
                   <label><i className="fas fa-calendar-alt" /> Scheduled Date & Time</label>
-                  <input type="datetime-local" name="scheduledAt" value={bookForm.scheduledAt} onChange={handleBookChange} />
+                  <input type="datetime-local" name="scheduledAt" value={bookForm.scheduledAt} onChange={handleBookChange} min={new Date().toISOString().slice(0,16)} />
                 </div>
               </div>
               <div className="h-fg">
