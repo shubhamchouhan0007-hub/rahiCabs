@@ -1,11 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { CustomerProvider, useCustomer } from './context/CustomerContext'
 import Home         from './pages/Home'
 import Login        from './pages/Login'
 import Register     from './pages/Register'
 import ClientDashboard from './pages/client/ClientDashboard'
 import AdminDashboard  from './pages/admin/AdminDashboard'
 import DriverDashboard from './pages/driver/DriverDashboard'
+import GuestBooking from './pages/customer/GuestBooking'
+import CustomerLogin from './pages/customer/CustomerLogin'
+import CustomerDashboard from './pages/customer/CustomerDashboard'
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth()
@@ -15,26 +19,45 @@ function ProtectedRoute({ children, role }) {
   return children
 }
 
+function CustomerProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useCustomer()
+  if (loading) return <div className="centered-loader"><i className="fas fa-spinner fa-spin" /></div>
+  if (!isAuthenticated) return <Navigate to="/customer/login" replace />
+  return children
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/"        element={<Home />} />
-          <Route path="/login"   element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/client/*" element={
-            <ProtectedRoute role="CLIENT"><ClientDashboard /></ProtectedRoute>
-          } />
-          <Route path="/admin/*" element={
-            <ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>
-          } />
-          <Route path="/driver/*" element={
-            <ProtectedRoute role="DRIVER"><DriverDashboard /></ProtectedRoute>
-          } />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <CustomerProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/"        element={<Home />} />
+            <Route path="/login"   element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Customer Routes */}
+            <Route path="/book" element={<GuestBooking />} />
+            <Route path="/customer/login" element={<CustomerLogin />} />
+            <Route path="/customer/dashboard/*" element={
+              <CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>
+            } />
+            
+            {/* Staff Routes */}
+            <Route path="/client/*" element={
+              <ProtectedRoute role="CLIENT"><ClientDashboard /></ProtectedRoute>
+            } />
+            <Route path="/admin/*" element={
+              <ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>
+            } />
+            <Route path="/driver/*" element={
+              <ProtectedRoute role="DRIVER"><DriverDashboard /></ProtectedRoute>
+            } />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </CustomerProvider>
     </AuthProvider>
   )
 }

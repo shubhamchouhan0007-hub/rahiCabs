@@ -1,5 +1,6 @@
 package com.rahicabs.security;
 
+import com.rahicabs.entity.Customer;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtTokenProvider {
@@ -30,27 +33,72 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(String email) {
-        return buildToken(email);
+        return buildToken(email, null);
+    }
+
+    public String generateCustomerToken(Customer customer) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("customerId", customer.getId());
+        claims.put("phoneNumber", customer.getPhoneNumber());
+        claims.put("type", "CUSTOMER");
+        return buildToken(customer.getPhoneNumber(), claims);
     }
 
     private String buildToken(String subject) {
+        return buildToken(subject, null);
+    }
+
+    private String buildToken(String subject, Map<String, Object> claims) {
         Date now    = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
-        return Jwts.builder()
+        
+        JwtBuilder builder = Jwts.builder()
                 .subject(subject)
                 .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey())
-                .compact();
+                .expiration(expiry);
+        
+        if (claims != null) {
+            builder.claims(claims);
+        }
+        
+        return builder.signWith(getSigningKey()).compact();
     }
 
     public String getEmailFromToken(String token) {
+        return getSubjectFromToken(token);
+    }
+
+    public String getSubjectFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+    }
+
+    public Long getCustomerIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        
+        Object customerId = claims.get("customerId");
+        if (customerId != null) {
+            return Long.valueOf(customerId.toString());
+        }
+        return null;
+    }
+
+    public String getTokenType(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        
+        return (String) claims.get("type");
     }
 
     public boolean validateToken(String token) {

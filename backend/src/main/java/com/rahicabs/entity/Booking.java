@@ -18,9 +18,14 @@ public class Booking {
     @JoinColumn(name = "client_id", nullable = true)
     private User client;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = true)
+    private Customer customer;
+
     // For guest (unregistered) bookings
     private String guestName;
     private String guestPhone;
+    private String guestEmail;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "driver_id")
@@ -44,6 +49,21 @@ public class Booking {
 
     private Double fare;
 
+    // Location coordinates
+    private Double pickupLatitude;
+    private Double pickupLongitude;
+    private Double dropLatitude;
+    private Double dropLongitude;
+
+    // Route details
+    private Double distance; // in km
+    private Integer duration; // in minutes
+
+    // Payment details
+    private Double advanceAmount;
+    private Double remainingAmount;
+    private Boolean advancePaid;
+
     private String notes;
 
     @Column(updatable = false)
@@ -53,5 +73,6 @@ public class Booking {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         if (status == null) status = BookingStatus.PENDING;
+        if (advancePaid == null) advancePaid = false;
     }
 }

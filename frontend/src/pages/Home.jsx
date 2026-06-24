@@ -127,8 +127,8 @@ export default function Home() {
             <li><a href="#contact"      onClick={() => setMenuOpen(false)}>Contact</a></li>
           </ul>
           <div className="h-nav-auth">
-            <Link to="/login"    className="h-btn-ghost">Login</Link>
-            <Link to="/register" className="h-btn h-btn-primary h-nav-cta"><i className="fas fa-taxi" /> Book Now</Link>
+            <Link to="/customer/login" className="h-btn-ghost">My Bookings</Link>
+            <Link to="/book" className="h-btn h-btn-primary h-nav-cta"><i className="fas fa-taxi" /> Book Now</Link>
           </div>
           <button className={`h-hamburger${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(m => !m)} aria-label="Menu">
             <span /><span /><span />
@@ -149,8 +149,8 @@ export default function Home() {
             <h1 className="h-hero-title">Your <span className="h-gradient-text">Premium Ride</span><br />Starts Here</h1>
             <p className="h-hero-subtitle">Safe, affordable, and on-time cab service across Bihar.<br />Trusted by thousands — available 24 × 7.</p>
             <div className="h-hero-actions">
-              <a href="#book-ride" className="h-btn h-btn-primary h-btn-lg"><i className="fas fa-car" /> Book a Ride</a>
-              <a href="#check-booking" className="h-btn h-btn-outline h-btn-lg"><i className="fas fa-search" /> Track Booking</a>
+              <Link to="/book" className="h-btn h-btn-primary h-btn-lg"><i className="fas fa-car" /> Book a Ride</Link>
+              <Link to="/customer/login" className="h-btn h-btn-outline h-btn-lg"><i className="fas fa-search" /> My Bookings</Link>
             </div>
             <div className="h-hero-stats" ref={statsRef}>
               {[['5000','Happy Riders'],['150','Expert Drivers'],['20','Cities Covered'],['24','/ 7 Support']].map(([n,l],i) => (

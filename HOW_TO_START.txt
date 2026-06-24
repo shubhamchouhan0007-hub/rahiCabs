@@ -1,0 +1,149 @@
+╔════════════════════════════════════════════════════════════╗
+║         🚀 HOW TO START RAHICABS APPLICATION              ║
+╚════════════════════════════════════════════════════════════╝
+
+📋 PREREQUISITES:
+   ✓ Java 21+ installed
+   ✓ Node.js 18+ installed
+   ✓ Internet connection (for maps & Razorpay)
+
+═══════════════════════════════════════════════════════════════
+
+🎯 EASIEST METHOD - USE IDE (RECOMMENDED)
+
+STEP 1: Start Backend
+   1. Open IntelliJ IDEA or Eclipse
+   2. Open folder: /Users/shubhamchouhan/Desktop/rahiCabs/backend
+   3. Find file: RahiCabsApplication.java
+   4. Right-click → Run
+   5. Wait for message: "Started RahiCabsApplication"
+   6. ✅ Backend running at: http://localhost:8080
+
+STEP 2: Start Frontend
+   1. Open new Terminal
+   2. Run these commands:
+      
+      cd /Users/shubhamchouhan/Desktop/rahiCabs/frontend
+      npm install
+      npm run dev
+   
+   3. Wait for message: "Local: http://localhost:5173/"
+   4. ✅ Frontend running at: http://localhost:5173
+
+STEP 3: Open Browser
+   1. Open: http://localhost:5173
+   2. Click "Book Now"
+   3. Start testing! 🎉
+
+═══════════════════════════════════════════════════════════════
+
+🎯 ALTERNATIVE METHOD - TERMINAL ONLY
+
+TERMINAL 1 (Backend):
+   cd /Users/shubhamchouhan/Desktop/rahiCabs/backend
+   mvn spring-boot:run
+   
+   (Wait for: "Started RahiCabsApplication")
+
+TERMINAL 2 (Frontend):
+   cd /Users/shubhamchouhan/Desktop/rahiCabs/frontend
+   npm install
+   npm run dev
+   
+   (Wait for: "Local: http://localhost:5173/")
+
+BROWSER:
+   Open: http://localhost:5173
+
+═══════════════════════════════════════════════════════════════
+
+🧪 QUICK TEST FLOW:
+
+1. Click "Book Now"
+2. Type "kol" in pickup → Select suggestion
+3. Type "salt" in drop → Select suggestion
+4. Click "Calculate Fare"
+5. Enter details:
+   Name: Test User
+   Phone: 9876543210
+   Email: test@example.com
+6. Click "Send OTP"
+7. CHECK BACKEND TERMINAL for OTP (will be printed)
+8. Enter OTP → Click "Proceed to Payment"
+9. Razorpay modal opens
+10. Use test card:
+    Card: 4111 1111 1111 1111
+    CVV: 123
+    Expiry: 12/25
+11. Complete payment
+12. ✅ Success! Redirected to dashboard
+
+═══════════════════════════════════════════════════════════════
+
+🔍 WHERE TO FIND OTP:
+
+The OTP will be printed in the BACKEND terminal like this:
+
+   === OTP GENERATED ===
+   Phone: 9876543210
+   OTP: 123456
+   Expires at: 2024-06-24T15:30:00
+   ====================
+
+Copy the OTP (123456) and paste in frontend.
+
+═══════════════════════════════════════════════════════════════
+
+🐛 TROUBLESHOOTING:
+
+Problem: Backend won't start
+→ Use IDE (IntelliJ/Eclipse) instead of terminal
+→ Check Java version: java -version (need 21+)
+→ Check port 8080 is free: lsof -i :8080
+
+Problem: Frontend won't start
+→ Delete node_modules and reinstall: rm -rf node_modules && npm install
+→ Check Node version: node -v (need 18+)
+
+Problem: OTP not showing
+→ Look at BACKEND terminal, scroll up
+→ Search for "=== OTP GENERATED ==="
+
+Problem: Payment modal not opening
+→ Check internet connection
+→ Disable ad blockers
+→ Try different browser (Chrome/Firefox)
+
+═══════════════════════════════════════════════════════════════
+
+✅ SUCCESS INDICATORS:
+
+Backend: Shows "Started RahiCabsApplication in X seconds"
+Frontend: Shows "Local: http://localhost:5173/"
+Browser: RahiCabs homepage loads
+Maps: Loads when you click "Book Now"
+Search: Typing shows dropdown suggestions
+OTP: Appears in backend terminal
+Payment: Razorpay modal opens
+
+═══════════════════════════════════════════════════════════════
+
+📞 IMPORTANT URLS:
+
+Frontend:  http://localhost:5173
+Backend:   http://localhost:8080
+H2 Console: http://localhost:8080/h2-console
+
+═══════════════════════════════════════════════════════════════
+
+🎉 YOU'RE ALL SET!
+
+Once both terminals show success messages, open your browser
+and start testing the application!
+
+For detailed documentation, see:
+   - START_APPLICATION.md
+   - TESTING_GUIDE.md
+   - QUICK_START.md
+
+═══════════════════════════════════════════════════════════════
