@@ -49,7 +49,7 @@ export default function GuestBooking() {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
-  const [serviceType, setServiceType] = useState('STANDARD');
+  const [serviceType, setServiceType] = useState('CITY_TAXI');
   const [notes, setNotes] = useState('');
   
   // OTP
@@ -473,9 +473,12 @@ export default function GuestBooking() {
               onChange={(e) => setEmail(e.target.value)}
             />
             <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
-              <option value="STANDARD">Standard</option>
-              <option value="PREMIUM">Premium</option>
-              <option value="SUV">SUV</option>
+              <option value="CITY_TAXI">City Taxi</option>
+              <option value="ONE_WAY">One Way</option>
+              <option value="ROUND_TRIP">Round Trip</option>
+              <option value="AIRPORT_TRANSFER">Airport Transfer</option>
+              <option value="HOURLY_RENTAL">Hourly Rental</option>
+              <option value="OUTSTATION">Outstation</option>
             </select>
             <textarea
               placeholder="Additional notes (optional)"
