@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -24,8 +24,11 @@ function MapClickHandler({ onMapClick, selectingPickup }) {
   return null;
 }
 
+const VALID_SERVICE_TYPES = ['CITY_TAXI','ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION'];
+
 export default function GuestBooking() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1); // 1: Locations, 2: Details, 3: OTP, 4: Payment
 
   // Location states
@@ -49,7 +52,10 @@ export default function GuestBooking() {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
-  const [serviceType, setServiceType] = useState('CITY_TAXI');
+  const paramService = searchParams.get('service');
+  const [serviceType, setServiceType] = useState(
+    paramService && VALID_SERVICE_TYPES.includes(paramService) ? paramService : 'CITY_TAXI'
+  );
   const [notes, setNotes] = useState('');
   
   // OTP

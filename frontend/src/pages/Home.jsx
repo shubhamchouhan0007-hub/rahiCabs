@@ -275,19 +275,19 @@ export default function Home() {
           </div>
           <div className="h-services-grid">
             {[
-              ['fas fa-taxi',     'City Taxi',         'Reliable rides available anytime, anywhere. Perfect for quick commutes or planned city travels.'],
-              ['fas fa-route',    'One Way Trip',       'Affordable one-way trips with no return charges. Budget-friendly for solo or quick rides.'],
-              ['fas fa-clock',    'Hourly Rental',      'Book by the hour for city tours or errands. Flexible and comfortable for families or groups.'],
-              ['fas fa-sync-alt', 'Round Trip',         'Round trip service for go-and-return journeys. Plan with complete peace of mind.'],
-              ['fas fa-plane',    'Airport Transfer',   'Stress-free airport pickup and drop-off. Never miss a flight with our punctual service.'],
-              ['fas fa-users',    'Outstation Rides',   'Comfortable intercity travel across Bihar and beyond. Safe, spacious, and affordable.'],
-            ].map(([icon,title,desc],i) => (
-              <div key={i} className="h-service-card reveal">
+              ['fas fa-taxi',     'City Taxi',         'Reliable rides available anytime, anywhere. Perfect for quick commutes or planned city travels.',         'CITY_TAXI'],
+              ['fas fa-route',    'One Way Trip',       'Affordable one-way trips with no return charges. Budget-friendly for solo or quick rides.',               'ONE_WAY'],
+              ['fas fa-clock',    'Hourly Rental',      'Book by the hour for city tours or errands. Flexible and comfortable for families or groups.',            'HOURLY_RENTAL'],
+              ['fas fa-sync-alt', 'Round Trip',         'Round trip service for go-and-return journeys. Plan with complete peace of mind.',                        'ROUND_TRIP'],
+              ['fas fa-plane',    'Airport Transfer',   'Stress-free airport pickup and drop-off. Never miss a flight with our punctual service.',                 'AIRPORT_TRANSFER'],
+              ['fas fa-users',    'Outstation Rides',   'Comfortable intercity travel across Bihar and beyond. Safe, spacious, and affordable.',                   'OUTSTATION'],
+            ].map(([icon,title,desc,type],i) => (
+              <Link key={i} to={`/book?service=${type}`} className="h-service-card reveal" style={{ textDecoration: 'none', cursor: 'pointer', display: 'block' }}>
                 <div className="h-service-icon"><i className={icon} /></div>
                 <h3>{title}</h3>
                 <p>{desc}</p>
-                <Link to="/register" className="h-service-link">Book Now <i className="fas fa-arrow-right" /></Link>
-              </div>
+                <span className="h-service-link">Book Now <i className="fas fa-arrow-right" /></span>
+              </Link>
             ))}
           </div>
         </div>
