@@ -18,9 +18,9 @@ export default function Layout({ children, navItems, role }) {
       {/* Sidebar */}
       <aside className={`sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <span className="sidebar-logo">
+          <span className="sidebar-logo" onClick={() => navigate('/')} style={{ cursor:'pointer' }}>
             <i className="fas fa-taxi" style={{ color: '#f5a623' }} />
-            <span>Rahi<b>Cabs</b></span>
+            <span>Rahi<b>Cab</b></span>
           </span>
           <button className="sidebar-close" onClick={() => setOpen(false)}>
             <i className="fas fa-times" />
@@ -59,9 +59,14 @@ export default function Layout({ children, navItems, role }) {
       {/* Main */}
       <main className="main-content">
         <header className="topbar">
-          <button className="hamburger-btn" onClick={() => setOpen(true)}>
-            <i className="fas fa-bars" />
-          </button>
+          <div className="topbar-left">
+            <button className="hamburger-btn" onClick={() => setOpen(true)}>
+              <i className="fas fa-bars" />
+            </button>
+            <span className="topbar-brand" onClick={() => navigate('/')}>
+              <i className="fas fa-taxi" /> Rahi<b>Cab</b>
+            </span>
+          </div>
           <div className="topbar-right">
             <span className="topbar-greeting">Hi, {user?.name} 👋</span>
           </div>

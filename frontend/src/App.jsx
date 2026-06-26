@@ -9,7 +9,6 @@ import ClientDashboard from './pages/client/ClientDashboard'
 import AdminDashboard  from './pages/admin/AdminDashboard'
 import DriverDashboard from './pages/driver/DriverDashboard'
 import GuestBooking from './pages/customer/GuestBooking'
-import CustomerLogin from './pages/customer/CustomerLogin'
 import CustomerDashboard from './pages/customer/CustomerDashboard'
 
 function ProtectedRoute({ children, role }) {
@@ -23,7 +22,7 @@ function ProtectedRoute({ children, role }) {
 function CustomerProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useCustomer()
   if (loading) return <div className="centered-loader"><i className="fas fa-spinner fa-spin" /></div>
-  if (!isAuthenticated) return <Navigate to="/customer/login" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
@@ -40,7 +39,7 @@ export default function App() {
             
             {/* Customer Routes */}
             <Route path="/book" element={<GuestBooking />} />
-            <Route path="/customer/login" element={<CustomerLogin />} />
+            <Route path="/customer/login" element={<Navigate to="/login" replace />} />
             <Route path="/customer/dashboard/*" element={
               <CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>
             } />

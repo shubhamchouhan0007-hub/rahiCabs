@@ -18,6 +18,11 @@ public class RegisterRequest {
     private String password;
 
     private String phone;
+    private Role role = Role.CLIENT;
 
-    private Role role = Role.CLIENT; // default CLIENT
+    // Driver-specific fields
+    private String vehicleNumber;
+    private String vehicleType;
+    private String aadhaarNumber;
+    private String licenseNumber;
 }

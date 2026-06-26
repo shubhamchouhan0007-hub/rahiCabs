@@ -43,9 +43,14 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        // Create driver profile automatically if role is DRIVER
         if (saved.getRole() == Role.DRIVER) {
-            DriverProfile profile = DriverProfile.builder().user(saved).build();
+            DriverProfile profile = DriverProfile.builder()
+                    .user(saved)
+                    .vehicleNumber(request.getVehicleNumber())
+                    .vehicleType(request.getVehicleType())
+                    .aadhaarNumber(request.getAadhaarNumber())
+                    .licenseNumber(request.getLicenseNumber())
+                    .build();
             driverProfileRepository.save(profile);
         }
 

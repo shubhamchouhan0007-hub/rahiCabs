@@ -84,7 +84,7 @@ export default function CustomerLogin() {
     <div className="customer-login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1>Welcome to RahiCabs</h1>
+          <h1>Welcome to RahiCab</h1>
           <p>Login with your phone number</p>
         </div>
 

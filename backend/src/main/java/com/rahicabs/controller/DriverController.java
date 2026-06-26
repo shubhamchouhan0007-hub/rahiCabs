@@ -46,11 +46,13 @@ public class DriverController {
                     m.put("name",          user.getName());
                     m.put("email",         user.getEmail());
                     m.put("phone",         user.getPhone() != null ? user.getPhone() : "");
-                    m.put("vehicleNumber", p.getVehicleNumber() != null ? p.getVehicleNumber() : "");
-                    m.put("vehicleType",   p.getVehicleType() != null ? p.getVehicleType() : "");
-                    m.put("isAvailable",   p.getIsAvailable());
-                    m.put("totalRides",    p.getTotalRides());
-                    m.put("rating",        p.getRating());
+                    m.put("vehicleNumber",  p.getVehicleNumber()  != null ? p.getVehicleNumber()  : "");
+                    m.put("vehicleType",    p.getVehicleType()    != null ? p.getVehicleType()    : "");
+                    m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? p.getAadhaarNumber()  : "");
+                    m.put("licenseNumber",  p.getLicenseNumber()  != null ? p.getLicenseNumber()  : "");
+                    m.put("isAvailable",    p.getIsAvailable());
+                    m.put("totalRides",     p.getTotalRides());
+                    m.put("rating",         p.getRating());
                     return ResponseEntity.ok(m);
                 })
                 .orElse(ResponseEntity.notFound().build());

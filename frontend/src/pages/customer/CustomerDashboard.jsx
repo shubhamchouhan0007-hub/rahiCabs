@@ -211,7 +211,7 @@ export default function CustomerDashboard() {
     <div className="customer-dashboard">
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
-          <h2>RahiCabs</h2>
+          <h2>RahiCab</h2>
           <p>Welcome, {customer?.fullName}!</p>
         </div>
         <nav className="sidebar-nav">
@@ -236,7 +236,7 @@ export default function CustomerDashboard() {
       <div className="dashboard-content">
         {showWelcome && (
           <div className="welcome-banner">
-            <h2>Welcome to RahiCabs! 🎉</h2>
+            <h2>Welcome to RahiCab! 🎉</h2>
             <p>Your account has been created successfully.</p>
           </div>
         )}

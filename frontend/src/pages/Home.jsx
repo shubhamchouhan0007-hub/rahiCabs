@@ -163,9 +163,9 @@ export default function Home() {
 
   /* Testimonials auto-slide */
   const testimonials = [
-    { initials: 'PS', name: 'Priya Sharma',  role: 'Business Professional, Patna',     stars: 5,   text: '"Best cab service in Bihar! The driver was on time, polite, and the car was spotless. Will definitely use RahiCabs again."' },
+    { initials: 'PS', name: 'Priya Sharma',  role: 'Business Professional, Patna',     stars: 5,   text: '"Best cab service in Bihar! The driver was on time, polite, and the car was spotless. Will definitely use RahiCab again."' },
     { initials: 'AK', name: 'Amit Kumar',    role: 'Software Engineer, Muzaffarpur',   stars: 5,   text: '"Booked a round trip from Muzaffarpur to Patna airport. Extremely smooth experience and the fare was very reasonable!"' },
-    { initials: 'SR', name: 'Sunita Rai',    role: 'Teacher, Darbhanga',               stars: 4.5, text: '"I use RahiCabs for my daily office commute. Consistent, professional, and the booking is super convenient."' },
+    { initials: 'SR', name: 'Sunita Rai',    role: 'Teacher, Darbhanga',               stars: 4.5, text: '"I use RahiCab for my daily office commute. Consistent, professional, and the booking is super convenient."' },
     { initials: 'RV', name: 'Rajesh Verma',  role: 'Doctor, Supaul',                  stars: 5,   text: '"Travelled with family from Supaul to Patna. The car was comfortable, AC was great, and the driver was very careful. 5 stars!"' },
     { initials: 'NJ', name: 'Neha Jha',      role: 'Entrepreneur, Bhagalpur',          stars: 5,   text: '"Quick booking, zero hidden charges, and the driver arrived 10 minutes early. That\'s the reliability I was looking for!"' },
   ]
@@ -183,7 +183,7 @@ export default function Home() {
         <div className="h-container h-nav-inner">
           <a href="#home" className="h-logo">
             <span className="h-logo-icon"><i className="fas fa-taxi" /></span>
-            <span className="h-logo-text">Rahi<span className="h-accent">Cabs</span></span>
+            <span className="h-logo-text">Rahi<span className="h-accent">Cab</span></span>
           </a>
           <ul className={`h-nav-links${menuOpen ? ' open' : ''}`}>
             <li><a href="#home"         onClick={() => setMenuOpen(false)}>Home</a></li>
@@ -194,7 +194,8 @@ export default function Home() {
             <li><a href="#contact"      onClick={() => setMenuOpen(false)}>Contact</a></li>
           </ul>
           <div className="h-nav-auth">
-            <Link to="/customer/login" className="h-btn-ghost">My Bookings</Link>
+            <Link to="/login" className="h-btn-ghost">Login</Link>
+            <Link to="/login" className="h-btn-ghost">My Bookings</Link>
             <Link to="/book" className="h-btn h-btn-primary h-nav-cta"><i className="fas fa-taxi" /> Book Now</Link>
           </div>
           <button className={`h-hamburger${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(m => !m)} aria-label="Menu">
@@ -217,7 +218,7 @@ export default function Home() {
             <p className="h-hero-subtitle">Safe, affordable, and on-time cab service across Bihar.<br />Trusted by thousands — available 24 × 7.</p>
             <div className="h-hero-actions">
               <Link to="/book" className="h-btn h-btn-primary h-btn-lg"><i className="fas fa-car" /> Book a Ride</Link>
-              <Link to="/customer/login" className="h-btn h-btn-outline h-btn-lg"><i className="fas fa-search" /> My Bookings</Link>
+              <Link to="/login" className="h-btn h-btn-outline h-btn-lg"><i className="fas fa-search" /> My Bookings</Link>
             </div>
             <div className="h-hero-stats" ref={statsRef}>
               {[['5000','Happy Riders'],['150','Expert Drivers'],['20','Cities Covered'],['24','/ 7 Support']].map(([n,l],i) => (
@@ -473,7 +474,7 @@ export default function Home() {
           <div className="h-why-content">
             <div className="h-section-header h-left reveal">
               <span className="h-section-tag">Our Advantage</span>
-              <h2>Why Choose <span className="h-gradient-text">RahiCabs</span>?</h2>
+              <h2>Why Choose <span className="h-gradient-text">RahiCab</span>?</h2>
               <p>We go beyond just a ride — we deliver an experience you can trust.</p>
             </div>
             {[
@@ -547,7 +548,7 @@ export default function Home() {
         <div className="h-container h-cta-content reveal">
           <div>
             <h2>Ready for a <span className="h-gradient-text-light">Premium Ride</span>?</h2>
-            <p>Book your cab now and experience the RahiCabs difference. Available 24/7, across Bihar.</p>
+            <p>Book your cab now and experience the RahiCab difference. Available 24/7, across Bihar.</p>
           </div>
           <div className="h-cta-actions">
             <Link to="/register" className="h-btn h-btn-white h-btn-lg"><i className="fas fa-user-plus" /> Get Started</Link>
@@ -568,7 +569,7 @@ export default function Home() {
             {[
               ['fas fa-phone-alt','Call Us','+91 99999 99999',<a href="tel:+919999999999">+91 99999 99999</a>],
               ['fab fa-whatsapp','WhatsApp','Available 24/7',<a href="https://wa.me/919999999999" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a>],
-              ['fas fa-envelope','Email Us','Replies within 2 hrs',<a href="mailto:info@rahicabs.com">info@rahicabs.com</a>],
+              ['fas fa-envelope','Email Us','Replies within 2 hrs',<a href="mailto:info@rahicab.com">info@rahicab.com</a>],
               ['fas fa-map-marker-alt','Our Base','Bihar, India',<span>Serving Bihar & beyond</span>],
             ].map(([icon,,sub,link],i) => (
               <div key={i} className="h-contact-item">
@@ -597,9 +598,9 @@ export default function Home() {
         <div className="h-container h-footer-inner">
           <div className="h-footer-brand">
             <span className="h-logo-icon"><i className="fas fa-taxi" /></span>
-            <span className="h-logo-text">Rahi<span className="h-accent">Cabs</span></span>
+            <span className="h-logo-text">Rahi<span className="h-accent">Cab</span></span>
           </div>
-          <p>© {new Date().getFullYear()} RahiCabs. All rights reserved. Safe & reliable cab service across Bihar.</p>
+          <p>© {new Date().getFullYear()} RahiCab. All rights reserved. Safe & reliable cab service across Bihar.</p>
           <div className="h-footer-links">
             <Link to="/login">Login</Link>
             <Link to="/register">Register</Link>
