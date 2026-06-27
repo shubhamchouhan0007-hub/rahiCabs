@@ -18,4 +18,5 @@ Thumbs.db
 
 # Env / secrets
 *.env
+*.env.local
 application-prod.properties

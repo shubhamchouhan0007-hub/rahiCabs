@@ -11,8 +11,8 @@
   display: flex; align-items: center; gap: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 1.2rem; font-weight: 800;
-  color: #1e1b4b; cursor: pointer;
+  color: #1a1f4e; cursor: pointer;
   transition: opacity .15s;
 }
 .topbar-global-brand:hover { opacity: .8; }
-.topbar-global-brand i { color: #f5a623; font-size: 1.1rem; }
+.topbar-global-brand i { color: #c9841a; font-size: 1.1rem; }

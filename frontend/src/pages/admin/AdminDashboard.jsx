@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-rou
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
+import { fmtDate, fmtDateTime } from '../../utils/format'
 import '../client/Client.css'
 
 const NAV = [
@@ -10,6 +11,7 @@ const NAV = [
   { path: '/admin/bookings',  label: 'Bookings',  icon: 'fas fa-list' },
   { path: '/admin/drivers',   label: 'Drivers',   icon: 'fas fa-car' },
   { path: '/admin/users',     label: 'Users',     icon: 'fas fa-users' },
+  { path: '/admin/messages',  label: 'Messages',  icon: 'fas fa-envelope' },
   { path: '/admin/settings',  label: 'Settings',  icon: 'fas fa-cog' },
 ]
 
@@ -21,6 +23,7 @@ export default function AdminDashboard() {
         <Route path="bookings"  element={<AdminBookings />} />
         <Route path="drivers"   element={<AdminDrivers />} />
         <Route path="users"     element={<AdminUsers />} />
+        <Route path="messages"  element={<AdminMessages />} />
         <Route path="settings"  element={<AdminSettings />} />
         <Route path="*"         element={<Navigate to="/admin" replace />} />
       </Routes>
@@ -34,7 +37,7 @@ function Breadcrumb({ current }) {
   const navigate = useNavigate()
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'16px', fontSize:'14px', color:'#6b7280' }}>
-      <span onClick={() => navigate('/admin')} style={{ cursor:'pointer', color:'#4f46e5', fontWeight:500 }}>Dashboard</span>
+      <span onClick={() => navigate('/admin')} style={{ cursor:'pointer', color:'#1a1f4e', fontWeight:500 }}>Dashboard</span>
       <span>/</span>
       <span style={{ color:'#111827', fontWeight:500 }}>{current}</span>
     </div>
@@ -115,8 +118,8 @@ function AdminBookings() {
         </div>
         <select className="filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
           <option value="ALL">All Statuses</option>
-          {['PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s =>
-            <option key={s} value={s}>{s.replace('_',' ')}</option>)}
+          {['PENDING_PAYMENT','PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s =>
+            <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
         </select>
         <span className="result-count">{visible.length} booking{visible.length !== 1 ? 's' : ''}</span>
       </div>
@@ -127,7 +130,7 @@ function AdminBookings() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Fare</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
+                <tr><th>#</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Scheduled</th><th>Fare</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
               </thead>
               <tbody>
                 {visible.map(b => (
@@ -136,6 +139,7 @@ function AdminBookings() {
                     <td>{b.clientName || b.guestName || '—'}<br /><small className="muted">{b.clientPhone || b.guestPhone || ''}</small></td>
                     <td>{b.pickupLocation}<br /><small className="muted">→ {b.dropLocation}</small></td>
                     <td><span className="tag">{b.serviceType.replace('_',' ')}</span></td>
+                    <td><small>{fmtDateTime(b.scheduledAt || b.createdAt)}</small></td>
                     <td>{b.fare ? <span className="fare-cell">₹{Number(b.fare).toLocaleString('en-IN',{maximumFractionDigits:0})}</span> : <span className="muted">—</span>}</td>
                     <td><StatusBadge status={b.status} /></td>
                     <td>{b.driverName || <span className="muted">—</span>}</td>
@@ -147,8 +151,8 @@ function AdminBookings() {
                     </td>
                     <td>
                       <select className="select-sm" value={b.status} onChange={e => updateStatus(b.id, e.target.value)}>
-                        {['PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s =>
-                          <option key={s} value={s}>{s.replace('_',' ')}</option>)}
+                        {['PENDING_PAYMENT','PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'].map(s =>
+                          <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
                       </select>
                     </td>
                   </tr>
@@ -360,7 +364,7 @@ function AdminUsers() {
                     <td>{u.email}</td>
                     <td>{u.phone || '—'}</td>
                     <td><span className={`badge badge-${roleColor[u.role]||'info'}`}>{u.role}</span></td>
-                    <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                    <td>{fmtDate(u.createdAt)}</td>
                     <td>
                       <button className="btn-danger-sm" onClick={() => remove(u.id, u.name)}
                         disabled={u.role === 'ADMIN'} title={u.role === 'ADMIN' ? 'Cannot delete admin' : 'Delete user'}>
@@ -562,8 +566,73 @@ function SettingField({ label, value, onChange, type='text', hint }) {
 }
 
 function StatusBadge({ status }) {
-  const map = { PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
-  return <span className={`badge badge-${map[status]||'info'}`}>{status.replace('_',' ')}</span>
+  const map = { PENDING_PAYMENT:'danger', PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
+  return <span className={`badge badge-${map[status]||'info'}`}>{status.replace(/_/g,' ')}</span>
 }
 
 function Spinner() { return <div className="spinner"><i className="fas fa-spinner fa-spin" /></div> }
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+function AdminMessages() {
+  const navigate = useNavigate()
+  const toast    = useToast()
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading]   = useState(true)
+
+  const load = () => api.get('/admin/messages').then(r => { setMessages(r.data.messages || []); setLoading(false) })
+  useEffect(() => { load() }, [])
+
+  const markRead = async id => {
+    await api.put(`/admin/messages/${id}/read`)
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead: true } : m))
+  }
+
+  const unread = messages.filter(m => !m.isRead).length
+
+  return (
+    <div>
+      <Breadcrumb current="Messages" />
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+        <h2 className="page-title" style={{ margin:0 }}>Contact Messages</h2>
+        {unread > 0 && <span className="badge badge-danger">{unread} unread</span>}
+      </div>
+      {loading ? <Spinner /> : messages.length === 0
+        ? <div className="empty-state"><i className="fas fa-envelope-open" /><p>No messages yet.</p></div>
+        : (
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {messages.map(m => (
+            <div key={m.id} className="card" style={{
+              padding:'16px 20px', borderLeft:`4px solid ${m.isRead ? '#e8e0d0' : '#c9841a'}`,
+              opacity: m.isRead ? 0.75 : 1
+            }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:'.95rem' }}>{m.name}
+                    {!m.isRead && <span className="badge badge-warning" style={{ marginLeft:8, fontSize:'.68rem' }}>New</span>}
+                  </div>
+                  <div style={{ fontSize:'.82rem', color:'#9ca3af', marginTop:2 }}>
+                    <i className="fas fa-phone" style={{ marginRight:5 }} />{m.phone}
+                    {m.email && <><span style={{ margin:'0 8px' }}>·</span><i className="fas fa-envelope" style={{ marginRight:5 }} />{m.email}</>}
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+                  <small style={{ color:'#9ca3af' }}>{fmtDateTime(m.sentAt)}</small>
+                  {!m.isRead && (
+                    <button className="btn-primary-sm" onClick={() => markRead(m.id)}>
+                      <i className="fas fa-check" /> Mark Read
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p style={{ marginTop:10, fontSize:'.9rem', color:'#374151', lineHeight:1.6,
+                background:'#f8f6f0', padding:'10px 14px', borderRadius:8, margin:'10px 0 0' }}>
+                {m.message}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

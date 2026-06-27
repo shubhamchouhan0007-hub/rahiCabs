@@ -27,6 +27,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
+    private final NotificationService notificationService;
 
     @Value("${app.razorpay.key-id:}")
     private String razorpayKeyId;
@@ -130,8 +131,9 @@ public class PaymentService {
 
         Booking booking = payment.getBooking();
         booking.setAdvancePaid(true);
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.PENDING);
         bookingRepository.save(booking);
+        notificationService.onPaymentConfirmed(booking);
     }
 
     private String hmacSha256(String data, String secret) throws Exception {

@@ -19,6 +19,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final DriverProfileRepository driverProfileRepository;
+    private final NotificationService notificationService;
 
     // ---- GUEST (no account needed) ----
     public BookingResponse createGuestBooking(BookingRequest request) {
@@ -33,7 +34,9 @@ public class BookingService {
                 .notes(request.getNotes())
                 .status(BookingStatus.PENDING)
                 .build();
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        notificationService.onBookingCreated(saved);
+        return BookingResponse.from(saved);
     }
 
     public List<BookingResponse> getGuestBookingsByPhone(String phone) {
@@ -53,7 +56,9 @@ public class BookingService {
                 .notes(request.getNotes())
                 .status(BookingStatus.PENDING)
                 .build();
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        notificationService.onBookingCreated(saved);
+        return BookingResponse.from(saved);
     }
 
     public List<BookingResponse> getClientBookings(User client) {
@@ -71,7 +76,8 @@ public class BookingService {
             return ApiResponse.error("Cannot cancel a ride that is already started or completed");
         }
         booking.setStatus(BookingStatus.CANCELLED);
-        bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+        notificationService.onBookingCancelled(saved);
         return ApiResponse.ok("Booking cancelled");
     }
 
@@ -88,7 +94,9 @@ public class BookingService {
                 .orElseThrow(() -> new RuntimeException("Driver not found"));
         booking.setDriver(driver);
         booking.setStatus(BookingStatus.CONFIRMED);
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        notificationService.onDriverAssigned(saved);
+        return BookingResponse.from(saved);
     }
 
     public BookingResponse updateStatus(Long bookingId, BookingStatus status) {
@@ -101,7 +109,9 @@ public class BookingService {
                 driverProfileRepository.save(p);
             });
         }
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        fireStatusNotification(saved, status);
+        return BookingResponse.from(saved);
     }
 
     public Map<String, Object> getAdminStats() {
@@ -144,6 +154,17 @@ public class BookingService {
             throw new RuntimeException("Not authorized");
         }
         booking.setStatus(status);
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        fireStatusNotification(saved, status);
+        return BookingResponse.from(saved);
+    }
+
+    private void fireStatusNotification(Booking b, BookingStatus status) {
+        switch (status) {
+            case IN_PROGRESS -> notificationService.onRideStarted(b);
+            case COMPLETED   -> notificationService.onRideCompleted(b);
+            case CANCELLED   -> notificationService.onBookingCancelled(b);
+            default          -> {} // PENDING, CONFIRMED etc handled elsewhere
+        }
     }
 }

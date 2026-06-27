@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
+import { fmtDate, fmtDateTime } from '../../utils/format'
 import '../client/Client.css'
 import './Driver.css'
 
@@ -157,7 +158,7 @@ function Breadcrumb({ current }) {
   const navigate = useNavigate()
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'16px', fontSize:'14px', color:'#6b7280' }}>
-      <span onClick={() => navigate('/driver')} style={{ cursor:'pointer', color:'#4f46e5', fontWeight:500 }}>Dashboard</span>
+      <span onClick={() => navigate('/driver')} style={{ cursor:'pointer', color:'#1a1f4e', fontWeight:500 }}>Dashboard</span>
       <span>/</span>
       <span style={{ color:'#111827', fontWeight:500 }}>{current}</span>
     </div>
@@ -229,7 +230,7 @@ function DriverEarnings() {
     .reduce((s, r) => s + (r.fare || 0), 0)
 
   const byMonth = completed.reduce((acc, r) => {
-    const key = r.createdAt ? new Date(r.createdAt).toLocaleString('default', { month:'long', year:'numeric' }) : 'Unknown'
+    const key = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN', { month:'long', year:'numeric' }) : 'Unknown'
     acc[key] = (acc[key] || 0) + (r.fare || 0)
     return acc
   }, {})
@@ -296,7 +297,7 @@ function DriverEarnings() {
                     <td><small>{r.pickupLocation} → {r.dropLocation}</small></td>
                     <td><span className="tag">{r.serviceType?.replace('_',' ')}</span></td>
                     <td><span className="fare-cell">₹{Number(r.fare).toLocaleString('en-IN',{maximumFractionDigits:0})}</span></td>
-                    <td><small>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</small></td>
+                    <td><small>{fmtDate(r.createdAt)}</small></td>
                   </tr>
                 ))}
               </tbody>
@@ -438,7 +439,7 @@ function RideCards({ rides, onUpdateStatus, detailed }) {
 
             {detailed && r.scheduledAt && (
               <div className="ride-scheduled">
-                <i className="fas fa-clock" /> {new Date(r.scheduledAt).toLocaleString()}
+                <i className="fas fa-clock" /> {fmtDateTime(r.scheduledAt)}
               </div>
             )}
 

@@ -26,6 +26,7 @@ public class AdminController {
     private final DriverProfileRepository driverProfileRepository;
     private final AppSettingService appSettingService;
     private final PasswordEncoder passwordEncoder;
+    private final ContactMessageRepository contactMessageRepository;
 
     // ── Stats ────────────────────────────────────────────────────────────────
 
@@ -199,5 +200,24 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> updateSettings(@RequestBody Map<String, String> body) {
         appSettingService.setAll(body);
         return ResponseEntity.ok(appSettingService.getAll());
+    }
+
+    // ── Contact Messages ──────────────────────────────────────────────────────
+
+    @GetMapping("/messages")
+    public ResponseEntity<Map<String, Object>> getMessages() {
+        return ResponseEntity.ok(Map.of(
+            "messages",    contactMessageRepository.findAllByOrderBySentAtDesc(),
+            "unreadCount", contactMessageRepository.countByIsReadFalse()
+        ));
+    }
+
+    @PutMapping("/messages/{id}/read")
+    public ResponseEntity<Void> markRead(@PathVariable Long id) {
+        contactMessageRepository.findById(id).ifPresent(m -> {
+            m.setIsRead(true);
+            contactMessageRepository.save(m);
+        });
+        return ResponseEntity.ok().build();
     }
 }

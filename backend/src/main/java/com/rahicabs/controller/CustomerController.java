@@ -2,6 +2,7 @@ package com.rahicabs.controller;
 
 import com.rahicabs.dto.*;
 import com.rahicabs.entity.Booking;
+import com.rahicabs.entity.BookingStatus;
 import com.rahicabs.entity.Customer;
 import com.rahicabs.entity.Payment;
 import com.rahicabs.entity.SavedLocation;
@@ -29,6 +30,7 @@ public class CustomerController {
     private final BookingRepository bookingRepository;
     private final CustomerRepository customerRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final NotificationService notificationService;
 
     // ========== OTP & Authentication ==========
 
@@ -95,9 +97,11 @@ public class CustomerController {
                 .remainingAmount(remainingAmount)
                 .advancePaid(false)
                 .notes(request.getNotes())
+                .status(BookingStatus.PENDING_PAYMENT)
                 .build();
 
         booking = bookingRepository.save(booking);
+        notificationService.onBookingCreated(booking);
 
         // Create Razorpay order
         Map<String, Object> paymentOrder = paymentService.createOrder(customer, booking, advanceAmount);
