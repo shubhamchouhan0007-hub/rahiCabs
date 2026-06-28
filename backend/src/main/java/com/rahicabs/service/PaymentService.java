@@ -89,11 +89,8 @@ public class PaymentService {
         Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
-        // Dev mock: skip signature verification
         if (request.getRazorpayOrderId().startsWith("order_dev_")) {
-            log.warn("Dev mock order — skipping signature verification");
-            markPaymentSuccess(payment, request.getRazorpayPaymentId(), "dev_mock_sig");
-            return ApiResponse.ok("Payment recorded (dev mode)");
+            return ApiResponse.error("Dev mode orders cannot be verified. Configure Razorpay keys to accept real payments.");
         }
 
         if (!isConfigured()) {

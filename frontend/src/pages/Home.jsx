@@ -27,7 +27,7 @@ export default function Home() {
     e.preventDefault()
     setContactLoading(true); setContactStatus(null)
     try {
-      await axios.post('http://localhost:8080/api/public/contact', contactForm)
+      await axios.post('/api/public/contact', contactForm)
       setContactStatus({ type:'success', msg:"Message sent! We'll get back to you soon." })
       setContactForm({ name:'', phone:'', email:'', message:'' })
     } catch {

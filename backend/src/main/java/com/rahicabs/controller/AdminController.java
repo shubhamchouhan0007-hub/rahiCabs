@@ -86,7 +86,7 @@ public class AdminController {
             m.put("phone",         p.getUser().getPhone() != null ? p.getUser().getPhone() : "");
             m.put("vehicleNumber",  p.getVehicleNumber()  != null ? p.getVehicleNumber()  : "");
             m.put("vehicleType",    p.getVehicleType()    != null ? p.getVehicleType()    : "");
-            m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? p.getAadhaarNumber()  : "");
+            m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? "****" + p.getAadhaarNumber().replaceAll(".*(.{4})$","$1") : "");
             m.put("licenseNumber",  p.getLicenseNumber()  != null ? p.getLicenseNumber()  : "");
             m.put("isAvailable",   p.getIsAvailable());
             m.put("totalRides",    p.getTotalRides());

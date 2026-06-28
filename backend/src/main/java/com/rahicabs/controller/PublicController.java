@@ -55,12 +55,13 @@ public class PublicController {
         return ResponseEntity.ok(ApiResponse.ok("Message sent! We'll get back to you soon."));
     }
 
-    /** Look up bookings by phone number — no auth needed */
+    /** Look up bookings by phone number — no auth needed (capped at 20 most recent) */
     @GetMapping("/bookings/check")
     public ResponseEntity<List<BookingResponse>> checkBookings(@RequestParam String phone) {
         if (phone == null || phone.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(bookingService.getGuestBookingsByPhone(phone.trim()));
+        List<BookingResponse> all = bookingService.getGuestBookingsByPhone(phone.trim());
+        return ResponseEntity.ok(all.stream().limit(20).collect(java.util.stream.Collectors.toList()));
     }
 }

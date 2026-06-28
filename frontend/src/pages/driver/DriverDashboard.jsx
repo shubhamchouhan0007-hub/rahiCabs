@@ -158,7 +158,7 @@ function Breadcrumb({ current }) {
   const navigate = useNavigate()
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'16px', fontSize:'14px', color:'#6b7280' }}>
-      <span onClick={() => navigate('/driver')} style={{ cursor:'pointer', color:'#1a1f4e', fontWeight:500 }}>Dashboard</span>
+      <span onClick={() => navigate('/driver')} style={{ cursor:'pointer', color:'#134e4a', fontWeight:500 }}>Dashboard</span>
       <span>/</span>
       <span style={{ color:'#111827', fontWeight:500 }}>{current}</span>
     </div>

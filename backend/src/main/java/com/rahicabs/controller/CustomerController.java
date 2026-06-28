@@ -65,7 +65,7 @@ public class CustomerController {
         // Verify OTP
         ApiResponse otpVerifyResult = otpService.verifyOtp(request.getPhoneNumber(), request.getOtp());
         if (!otpVerifyResult.isSuccess()) {
-            throw new RuntimeException(otpVerifyResult.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", otpVerifyResult.getMessage()));
         }
 
         // Get or create customer
@@ -150,17 +150,14 @@ public class CustomerController {
     }
 
     @GetMapping("/bookings/{id}")
-    public ResponseEntity<BookingResponse> getBookingDetails(
+    public ResponseEntity<?> getBookingDetails(
             @RequestHeader("Authorization") String token,
             @PathVariable Long id) {
         Customer customer = getCustomerFromToken(token);
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
-        if (!booking.getCustomer().getId().equals(customer.getId())) {
-            throw new RuntimeException("Unauthorized");
-        }
-        
+        Booking booking = bookingRepository.findById(id).orElse(null);
+        if (booking == null) return ResponseEntity.notFound().build();
+        if (!booking.getCustomer().getId().equals(customer.getId()))
+            return ResponseEntity.status(403).build();
         return ResponseEntity.ok(BookingResponse.from(booking));
     }
 

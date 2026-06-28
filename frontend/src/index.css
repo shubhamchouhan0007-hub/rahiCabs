@@ -1,8 +1,8 @@
 /* ===== RahiCab Global Styles ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --primary: #1a1f4e;
-  --primary-light: #2a306e;
+  --primary: #134e4a;
+  --primary-light: #0f766e;
   --accent: #c9841a;
   --accent-dark: #a86d14;
   --white: #fff;
@@ -16,8 +16,8 @@
   --warning: #f59e0b;
   --info: #3b82f6;
   --radius: 12px;
-  --shadow: 0 2px 16px rgba(26,31,78,.08);
-  --shadow-lg: 0 8px 32px rgba(26,31,78,.14);
+  --shadow: 0 2px 16px rgba(19,78,74,.08);
+  --shadow-lg: 0 8px 32px rgba(19,78,74,.14);
   --transition: .25s ease;
 }
 html { font-size: 16px; }
