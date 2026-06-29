@@ -18,4 +18,6 @@ Thumbs.db
 
 # Env / secrets
 *.env
-application-prod.properties
+*.env.local
+# NOTE: application-prod.properties is intentionally tracked — it contains only
+# ${ENV_VAR} references (no secrets); the real values are injected by the host.

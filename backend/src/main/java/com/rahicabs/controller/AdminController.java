@@ -26,6 +26,7 @@ public class AdminController {
     private final DriverProfileRepository driverProfileRepository;
     private final AppSettingService appSettingService;
     private final PasswordEncoder passwordEncoder;
+    private final ContactMessageRepository contactMessageRepository;
 
     // ── Stats ────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ public class AdminController {
             m.put("phone",         p.getUser().getPhone() != null ? p.getUser().getPhone() : "");
             m.put("vehicleNumber",  p.getVehicleNumber()  != null ? p.getVehicleNumber()  : "");
             m.put("vehicleType",    p.getVehicleType()    != null ? p.getVehicleType()    : "");
-            m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? p.getAadhaarNumber()  : "");
+            m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? "****" + p.getAadhaarNumber().replaceAll(".*(.{4})$","$1") : "");
             m.put("licenseNumber",  p.getLicenseNumber()  != null ? p.getLicenseNumber()  : "");
             m.put("isAvailable",   p.getIsAvailable());
             m.put("totalRides",    p.getTotalRides());
@@ -199,5 +200,24 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> updateSettings(@RequestBody Map<String, String> body) {
         appSettingService.setAll(body);
         return ResponseEntity.ok(appSettingService.getAll());
+    }
+
+    // ── Contact Messages ──────────────────────────────────────────────────────
+
+    @GetMapping("/messages")
+    public ResponseEntity<Map<String, Object>> getMessages() {
+        return ResponseEntity.ok(Map.of(
+            "messages",    contactMessageRepository.findAllByOrderBySentAtDesc(),
+            "unreadCount", contactMessageRepository.countByIsReadFalse()
+        ));
+    }
+
+    @PutMapping("/messages/{id}/read")
+    public ResponseEntity<Void> markRead(@PathVariable Long id) {
+        contactMessageRepository.findById(id).ifPresent(m -> {
+            m.setIsRead(true);
+            contactMessageRepository.save(m);
+        });
+        return ResponseEntity.ok().build();
     }
 }

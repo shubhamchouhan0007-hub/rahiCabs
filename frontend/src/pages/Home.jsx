@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
+import { fmtDateTime } from '../utils/format'
+import { loadGoogleMaps } from '../utils/loadGoogleMaps'
 import './Home.css'
+
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
 const SERVICE_TYPES = ['CITY_TAXI','ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION']
 const SERVICE_LABELS = { CITY_TAXI:'City Taxi', ONE_WAY:'One Way', HOURLY_RENTAL:'Hourly Rental', ROUND_TRIP:'Round Trip', AIRPORT_TRANSFER:'Airport Transfer', OUTSTATION:'Outstation' }
@@ -14,6 +18,23 @@ export default function Home() {
   const statsRef                       = useRef(null)
   const statsAnimated                  = useRef(false)
 
+  /* ---- Contact Form ---- */
+  const [contactForm, setContactForm] = useState({ name:'', phone:'', email:'', message:'' })
+  const [contactStatus, setContactStatus] = useState(null) // {type, msg}
+  const [contactLoading, setContactLoading] = useState(false)
+
+  const handleContactSubmit = async e => {
+    e.preventDefault()
+    setContactLoading(true); setContactStatus(null)
+    try {
+      await axios.post('/api/public/contact', contactForm)
+      setContactStatus({ type:'success', msg:"Message sent! We'll get back to you soon." })
+      setContactForm({ name:'', phone:'', email:'', message:'' })
+    } catch {
+      setContactStatus({ type:'error', msg:'Failed to send. Please try again.' })
+    } finally { setContactLoading(false) }
+  }
+
   /* ---- Guest Booking Form ---- */
   const [bookForm, setBookForm] = useState({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'CITY_TAXI', scheduledAt:'', notes:'' })
   const [bookStatus, setBookStatus] = useState(null) // {type, msg, bookingId}
@@ -24,36 +45,54 @@ export default function Home() {
   const [dropSuggestions, setDropSuggestions] = useState([])
   const [pickupLoading, setPickupLoading] = useState(false)
   const [dropLoading, setDropLoading] = useState(false)
-  const pickupTimer = useRef(null)
-  const dropTimer   = useRef(null)
-  const pickupCoord = useRef(null)   // { lat, lon }
-  const dropCoord   = useRef(null)
+  const pickupTimer  = useRef(null)
+  const dropTimer    = useRef(null)
+  const pickupCoord  = useRef(null)   // { lat, lng }
+  const dropCoord    = useRef(null)
+  const acRef        = useRef(null)
+  const geocoderRef  = useRef(null)
   const [fareEst, setFareEst] = useState(null)
 
-  const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const haversineKm = (lat1, lng1, lat2, lng2) => {
     const R = 6371, toRad = d => d * Math.PI / 180
-    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lng2 - lng1)
     const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
   const recalcFare = (pc, dc) => {
     if (pc && dc) {
-      const dist = haversineKm(pc.lat, pc.lon, dc.lat, dc.lon)
+      const dist = haversineKm(pc.lat, pc.lng, dc.lat, dc.lng)
       setFareEst({ dist: dist.toFixed(1), fare: Math.max(150, Math.round(dist * 11)) })
     } else {
       setFareEst(null)
     }
   }
 
-  const fetchSuggestions = (query, setSuggestions, setLoading) => {
+  const ensureGoogleApi = async () => {
+    await loadGoogleMaps(MAPS_KEY)
+    if (!acRef.current)       acRef.current       = new window.google.maps.places.AutocompleteService()
+    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder()
+  }
+
+  const fetchSuggestions = async (query, setSuggestions, setLoading) => {
     if (!query || query.length < 3) { setSuggestions([]); return }
     setLoading(true)
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=in`)
-      .then(r => r.json())
-      .then(data => setSuggestions(data))
-      .catch(() => setSuggestions([]))
-      .finally(() => setLoading(false))
+    try {
+      await ensureGoogleApi()
+      acRef.current.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'in' },
+          location: new window.google.maps.LatLng(25.5941, 85.1376),
+          radius: 400000,
+        },
+        (preds, status) => {
+          setSuggestions((status === 'OK' && preds) ? preds : [])
+          setLoading(false)
+        }
+      )
+    } catch { setSuggestions([]); setLoading(false) }
   }
 
   const handleBookChange = e => {
@@ -71,21 +110,21 @@ export default function Home() {
     }
   }
 
-  const selectSuggestion = (field, item) => {
-    const label = item.display_name.split(',').slice(0, 3).join(',')
+  const selectSuggestion = async (field, prediction) => {
+    const label = prediction.description
     setBookForm(f => ({ ...f, [field]: label }))
-    if (field === 'pickupLocation') {
-      pickupCoord.current = { lat: parseFloat(item.lat), lon: parseFloat(item.lon) }
-      setPickupSuggestions([])
-    }
-    if (field === 'dropLocation') {
-      dropCoord.current = { lat: parseFloat(item.lat), lon: parseFloat(item.lon) }
-      setDropSuggestions([])
-    }
-    recalcFare(
-      field === 'pickupLocation' ? { lat: parseFloat(item.lat), lon: parseFloat(item.lon) } : pickupCoord.current,
-      field === 'dropLocation'   ? { lat: parseFloat(item.lat), lon: parseFloat(item.lon) } : dropCoord.current
-    )
+    if (field === 'pickupLocation') setPickupSuggestions([])
+    if (field === 'dropLocation')   setDropSuggestions([])
+    try {
+      await ensureGoogleApi()
+      geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
+        if (status !== 'OK' || !results[0]) return
+        const loc = results[0].geometry.location
+        const coords = { lat: loc.lat(), lng: loc.lng() }
+        if (field === 'pickupLocation') { pickupCoord.current = coords; recalcFare(coords, dropCoord.current) }
+        if (field === 'dropLocation')   { dropCoord.current   = coords; recalcFare(pickupCoord.current, coords) }
+      })
+    } catch {}
   }
 
   const handleBookSubmit = async e => {
@@ -245,7 +284,7 @@ export default function Home() {
           </div>
         </div>
         <div className="h-hero-wave">
-          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f8fafc"/></svg>
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f8f6f0"/></svg>
         </div>
       </section>
 
@@ -358,7 +397,7 @@ export default function Home() {
                       <ul className="h-suggestions">
                         {pickupSuggestions.map((s, i) => (
                           <li key={i} onMouseDown={() => selectSuggestion('pickupLocation', s)}>
-                            <i className="fas fa-map-marker-alt" /> {s.display_name.split(',').slice(0,4).join(',')}
+                            <i className="fas fa-map-marker-alt" /> {s.description}
                           </li>
                         ))}
                       </ul>
@@ -374,7 +413,7 @@ export default function Home() {
                       <ul className="h-suggestions">
                         {dropSuggestions.map((s, i) => (
                           <li key={i} onMouseDown={() => selectSuggestion('dropLocation', s)}>
-                            <i className="fas fa-map-marker-alt" /> {s.display_name.split(',').slice(0,4).join(',')}
+                            <i className="fas fa-map-marker-alt" /> {s.description}
                           </li>
                         ))}
                       </ul>
@@ -447,9 +486,9 @@ export default function Home() {
                       <div className="h-bk-row"><i className="fas fa-map-marker-alt" /><span><b>Pickup:</b> {b.pickupLocation}</span></div>
                       <div className="h-bk-row"><i className="fas fa-flag-checkered" /><span><b>Drop:</b> {b.dropLocation}</span></div>
                       <div className="h-bk-row"><i className="fas fa-taxi" /><span><b>Service:</b> {SERVICE_LABELS[b.serviceType]}</span></div>
-                      {b.scheduledAt && <div className="h-bk-row"><i className="fas fa-calendar" /><span><b>Scheduled:</b> {new Date(b.scheduledAt).toLocaleString()}</span></div>}
+                      {b.scheduledAt && <div className="h-bk-row"><i className="fas fa-calendar" /><span><b>Scheduled:</b> {fmtDateTime(b.scheduledAt)}</span></div>}
                       {b.driverName  && <div className="h-bk-row"><i className="fas fa-user-tie" /><span><b>Driver:</b> {b.driverName} — {b.driverPhone}</span></div>}
-                      <div className="h-bk-row"><i className="fas fa-clock" /><span><b>Booked on:</b> {new Date(b.createdAt).toLocaleString()}</span></div>
+                      <div className="h-bk-row"><i className="fas fa-clock" /><span><b>Booked on:</b> {fmtDateTime(b.createdAt)}</span></div>
                     </div>
                   </div>
                 ))}
@@ -580,14 +619,28 @@ export default function Home() {
           </div>
           <div className="h-contact-form-wrap reveal">
             <h3>Send a Message</h3>
-            <form className="h-contact-form" onSubmit={e => e.preventDefault()}>
-              <div className="h-cf-row">
-                <input type="text"  placeholder="Your Name"  required />
-                <input type="tel"   placeholder="Your Phone" required />
+            {contactStatus && (
+              <div style={{ padding:'10px 14px', borderRadius:8, marginBottom:14, fontSize:'.88rem',
+                background: contactStatus.type==='success' ? '#f0fdf4' : '#fef2f2',
+                color:      contactStatus.type==='success' ? '#166534'  : '#991b1b',
+                border:     `1px solid ${contactStatus.type==='success' ? '#bbf7d0' : '#fecaca'}` }}>
+                {contactStatus.msg}
               </div>
-              <input type="email" placeholder="Email Address" required />
-              <textarea rows="4"  placeholder="Your Message" required />
-              <button type="submit" className="h-btn h-btn-primary h-btn-full"><i className="fas fa-paper-plane" /> Send Message</button>
+            )}
+            <form className="h-contact-form" onSubmit={handleContactSubmit}>
+              <div className="h-cf-row">
+                <input type="text" placeholder="Your Name" required
+                  value={contactForm.name} onChange={e => setContactForm({...contactForm, name:e.target.value})} />
+                <input type="tel" placeholder="Your Phone" required
+                  value={contactForm.phone} onChange={e => setContactForm({...contactForm, phone:e.target.value})} />
+              </div>
+              <input type="email" placeholder="Email Address (optional)"
+                value={contactForm.email} onChange={e => setContactForm({...contactForm, email:e.target.value})} />
+              <textarea rows="4" placeholder="Your Message" required
+                value={contactForm.message} onChange={e => setContactForm({...contactForm, message:e.target.value})} />
+              <button type="submit" className="h-btn h-btn-primary h-btn-full" disabled={contactLoading}>
+                {contactLoading ? <><i className="fas fa-spinner fa-spin" /> Sending…</> : <><i className="fas fa-paper-plane" /> Send Message</>}
+              </button>
             </form>
           </div>
         </div>

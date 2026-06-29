@@ -3,7 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { useToast } from '../../context/ToastContext'
+import { loadGoogleMaps } from '../../utils/loadGoogleMaps'
 import './Client.css'
+
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
 const NAV = [
   { path: '/client',        label: 'Dashboard',     icon: 'fas fa-tachometer-alt' },
@@ -11,22 +14,30 @@ const NAV = [
   { path: '/client/rides',  label: 'My Bookings',   icon: 'fas fa-list' },
 ]
 
-// ---- Haversine distance ----
-function haversineKm(lat1, lon1, lat2, lon2) {
+// ---- Haversine distance (estimate only — server uses Google Distance Matrix) ----
+function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371, toRad = d => d * Math.PI / 180
-  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lng2 - lng1)
   const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 const RATE = 11   // ₹ per km
 const MIN_FARE = 150
 
-// ---- Nominatim autocomplete hook ----
+// ---- Google Places autocomplete hook ----
 function useLocationAC() {
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading]         = useState(false)
-  const [coords, setCoords]           = useState(null)  // { lat, lon }
-  const timerRef = useRef(null)
+  const [coords, setCoords]           = useState(null)  // { lat, lng }
+  const timerRef    = useRef(null)
+  const acRef       = useRef(null)
+  const geocoderRef = useRef(null)
+
+  const ensureApi = useCallback(async () => {
+    await loadGoogleMaps(MAPS_KEY)
+    if (!acRef.current)       acRef.current       = new window.google.maps.places.AutocompleteService()
+    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder()
+  }, [])
 
   const query = useCallback((text) => {
     clearTimeout(timerRef.current)
@@ -35,22 +46,42 @@ function useLocationAC() {
     setLoading(true)
     timerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&countrycodes=in`,
-          { headers: { 'Accept-Language': 'en' } }
+        await ensureApi()
+        acRef.current.getPlacePredictions(
+          {
+            input: text,
+            componentRestrictions: { country: 'in' },
+            location: new window.google.maps.LatLng(25.5941, 85.1376),
+            radius: 400000,
+          },
+          (preds, status) => {
+            setSuggestions((status === 'OK' && preds) ? preds : [])
+            setLoading(false)
+          }
         )
-        setSuggestions(await res.json())
-      } catch { /* ignore */ }
-      setLoading(false)
+      } catch { setSuggestions([]); setLoading(false) }
     }, 380)
-  }, [])
+  }, [ensureApi])
+
+  // Resolves place_id → { lat, lng } and updates coords state
+  const resolveCoords = useCallback(async (placeId) => {
+    try {
+      await ensureApi()
+      geocoderRef.current.geocode({ placeId }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          const loc = results[0].geometry.location
+          setCoords({ lat: loc.lat(), lng: loc.lng() })
+        }
+      })
+    } catch {}
+  }, [ensureApi])
 
   const reset = useCallback(() => {
     clearTimeout(timerRef.current)
     setSuggestions([]); setCoords(null); setLoading(false)
   }, [])
 
-  return { suggestions, loading, coords, setCoords, query, reset, setSuggestions }
+  return { suggestions, loading, coords, setCoords, query, reset, setSuggestions, resolveCoords }
 }
 
 export default function ClientDashboard() {
@@ -113,7 +144,7 @@ function BookRide() {
   // Recalculate fare whenever both coords are set
   useEffect(() => {
     if (pickup.coords && drop.coords) {
-      const dist = haversineKm(pickup.coords.lat, pickup.coords.lon, drop.coords.lat, drop.coords.lon)
+      const dist = haversineKm(pickup.coords.lat, pickup.coords.lng, drop.coords.lat, drop.coords.lng)
       const fare = Math.max(MIN_FARE, Math.round(dist * RATE))
       setFareEst({ dist: dist.toFixed(1), fare })
     } else {
@@ -165,12 +196,12 @@ function BookRide() {
                 <ul className="ac-list">
                   {pickup.suggestions.map((s,i) => (
                     <li key={i} onMouseDown={() => {
-                      setForm(f => ({...f, pickupLocation: s.display_name.split(',').slice(0,3).join(',')}))
-                      pickup.setCoords({ lat: parseFloat(s.lat), lon: parseFloat(s.lon) })
+                      setForm(f => ({...f, pickupLocation: s.description}))
+                      pickup.resolveCoords(s.place_id)
                       pickup.setSuggestions([])
                     }}>
                       <i className="fas fa-map-marker-alt" style={{color:'#f5a623',marginRight:8}} />
-                      {s.display_name.split(',').slice(0,4).join(',')}
+                      {s.description}
                     </li>
                   ))}
                 </ul>
@@ -192,12 +223,12 @@ function BookRide() {
                 <ul className="ac-list">
                   {drop.suggestions.map((s,i) => (
                     <li key={i} onMouseDown={() => {
-                      setForm(f => ({...f, dropLocation: s.display_name.split(',').slice(0,3).join(',')}))
-                      drop.setCoords({ lat: parseFloat(s.lat), lon: parseFloat(s.lon) })
+                      setForm(f => ({...f, dropLocation: s.description}))
+                      drop.resolveCoords(s.place_id)
                       drop.setSuggestions([])
                     }}>
                       <i className="fas fa-map-marker-alt" style={{color:'#f5a623',marginRight:8}} />
-                      {s.display_name.split(',').slice(0,4).join(',')}
+                      {s.description}
                     </li>
                   ))}
                 </ul>

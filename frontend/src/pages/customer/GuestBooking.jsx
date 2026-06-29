@@ -1,31 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import customerApi from '../../services/customerApi';
 import TopBar from '../../components/TopBar';
+import { loadGoogleMaps } from '../../utils/loadGoogleMaps';
 import './GuestBooking.css';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({ click: (e) => onMapClick(e.latlng) });
-  return null;
-}
-
-function MapFlyTo({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    if (center) map.flyTo(center, map.getZoom(), { duration: 1 });
-  }, [center, map]);
-  return null;
-}
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
 
 const SERVICES = [
   { type: 'CITY_TAXI',        icon: 'fas fa-taxi',            label: 'City Taxi',        desc: 'Quick rides in the city',           color: '#f97316' },
@@ -44,23 +24,35 @@ export default function GuestBooking() {
   const [step, setStep] = useState(1);
 
   /* ── Step 1: Locations ─────────────────── */
-  const [pickupVal, setPickupVal] = useState('');
+  const [pickupVal, setPickupVal]       = useState('');
   const [pickupLocation, setPickupLocation] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
-  const [dropVal, setDropVal] = useState('');
+  const [dropVal, setDropVal]           = useState('');
   const [dropLocation, setDropLocation] = useState('');
-  const [dropCoords, setDropCoords] = useState(null);
+  const [dropCoords, setDropCoords]     = useState(null);
   const [selectingPickup, setSelectingPickup] = useState(true);
   const selectingPickupRef = useRef(true);
   useEffect(() => { selectingPickupRef.current = selectingPickup; }, [selectingPickup]);
+
+  const [pickupSugs, setPickupSugs]     = useState([]);
+  const [dropSugs, setDropSugs]         = useState([]);
+  const [sugLoading, setSugLoading]     = useState(false);
   const skipPickupSearch = useRef(false);
   const skipDropSearch   = useRef(false);
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropSuggestions, setDropSuggestions]     = useState([]);
-  const [searchLoading, setSearchLoading]         = useState(false);
-  const [mapCenter, setMapCenter]                 = useState([25.5941, 85.1376]);
-  const [locating, setLocating]                   = useState(false);
-  const [locateError, setLocateError]             = useState('');
+  const pickupTimer      = useRef(null);
+  const dropTimer        = useRef(null);
+
+  // Google API refs
+  const acServiceRef     = useRef(null);
+  const geocoderRef      = useRef(null);
+  const mapDivRef        = useRef(null);
+  const gMapRef          = useRef(null);
+  const pickupMarkerRef  = useRef(null);
+  const dropMarkerRef    = useRef(null);
+  const [gMapVersion, setGMapVersion] = useState(0); // increments to trigger marker effects
+
+  const [locating, setLocating]       = useState(false);
+  const [locateError, setLocateError] = useState('');
 
   /* ── Step 2: Service + Details ─────────── */
   const paramService = searchParams.get('service');
@@ -81,7 +73,7 @@ export default function GuestBooking() {
   const [countdown, setCountdown]     = useState(0);
 
   /* ── Step 4: Fare + Pay ────────────────── */
-  const [fareDetails, setFareDetails] = useState(null);
+  const [fareDetails, setFareDetails]   = useState(null);
   const [paymentOrder, setPaymentOrder] = useState(null);
   const [bookingId, setBookingId]       = useState(null);
 
@@ -103,29 +95,116 @@ export default function GuestBooking() {
     return () => clearTimeout(t);
   }, [locateError]);
 
-  /* ── Geolocation ────────────────────────── */
-  useEffect(() => {
-    if (navigator.geolocation)
-      navigator.geolocation.getCurrentPosition(
-        pos => setMapCenter([pos.coords.latitude, pos.coords.longitude]),
-        () => {}
-      );
+  /* ── Ensure Google API loaded ────────────── */
+  const ensureApi = useCallback(async () => {
+    await loadGoogleMaps(MAPS_KEY);
+    if (!acServiceRef.current) acServiceRef.current = new window.google.maps.places.AutocompleteService();
+    if (!geocoderRef.current)  geocoderRef.current  = new window.google.maps.Geocoder();
   }, []);
 
+  /* ── Init Google Map when step 1 renders ─── */
+  useEffect(() => {
+    if (step !== 1) return;
+    let cancelled = false;
+
+    loadGoogleMaps(MAPS_KEY).then(() => {
+      if (cancelled || !mapDivRef.current || gMapRef.current) return;
+      acServiceRef.current = acServiceRef.current || new window.google.maps.places.AutocompleteService();
+      geocoderRef.current  = geocoderRef.current  || new window.google.maps.Geocoder();
+
+      const map = new window.google.maps.Map(mapDivRef.current, {
+        center: { lat: 25.5941, lng: 85.1376 },
+        zoom: 11,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControlOptions: { position: window.google.maps.ControlPosition.RIGHT_CENTER },
+      });
+      gMapRef.current = map;
+      setGMapVersion(v => v + 1);
+
+      map.addListener('click', e => {
+        const lat = e.latLng.lat(), lng = e.latLng.lng();
+        reverseGeocode(lat, lng, selectingPickupRef.current);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      gMapRef.current = null;
+      if (pickupMarkerRef.current) { pickupMarkerRef.current.setMap(null); pickupMarkerRef.current = null; }
+      if (dropMarkerRef.current)   { dropMarkerRef.current.setMap(null);   dropMarkerRef.current   = null; }
+      setGMapVersion(0);
+    };
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Update pickup marker on coord change ─── */
+  useEffect(() => {
+    if (!gMapRef.current || !window.google?.maps) return;
+    if (pickupMarkerRef.current) { pickupMarkerRef.current.setMap(null); pickupMarkerRef.current = null; }
+    if (pickupCoords) {
+      pickupMarkerRef.current = new window.google.maps.Marker({
+        map: gMapRef.current,
+        position: pickupCoords,
+        label: { text: 'P', color: '#fff', fontWeight: 'bold', fontSize: '12px' },
+        title: 'Pickup',
+      });
+      gMapRef.current.panTo(pickupCoords);
+    }
+  }, [pickupCoords, gMapVersion]);
+
+  /* ── Update drop marker on coord change ───── */
+  useEffect(() => {
+    if (!gMapRef.current || !window.google?.maps) return;
+    if (dropMarkerRef.current) { dropMarkerRef.current.setMap(null); dropMarkerRef.current = null; }
+    if (dropCoords) {
+      dropMarkerRef.current = new window.google.maps.Marker({
+        map: gMapRef.current,
+        position: dropCoords,
+        label: { text: 'D', color: '#fff', fontWeight: 'bold', fontSize: '12px' },
+        title: 'Drop',
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#ef4444',
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 2,
+        },
+      });
+      gMapRef.current.panTo(dropCoords);
+    }
+  }, [dropCoords, gMapVersion]);
+
+  /* ── Reverse geocode (map click / my location) ── */
+  const reverseGeocode = useCallback(async (lat, lng, isPickup) => {
+    try {
+      await ensureApi();
+      geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+        const label = (status === 'OK' && results[0])
+          ? results[0].formatted_address
+          : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        if (isPickup) {
+          skipPickupSearch.current = true;
+          setPickupVal(label); setPickupLocation(label); setPickupCoords({ lat, lng });
+        } else {
+          skipDropSearch.current = true;
+          setDropVal(label); setDropLocation(label); setDropCoords({ lat, lng });
+        }
+      });
+    } catch {}
+  }, [ensureApi]);
+
+  /* ── Use current GPS location ───────────── */
   const useMyLocation = () => {
     if (!navigator.geolocation) { setError('Geolocation not supported'); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async ({ coords: { latitude: lat, longitude: lng } }) => {
         try {
-          const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const data = await res.json();
-          const label = data.display_name.split(',').slice(0, 3).join(', ');
-          skipPickupSearch.current = true;
-          setPickupVal(label); setPickupLocation(label);
-          setPickupCoords({ lat, lng });
-          setMapCenter([lat, lng]);
+          await reverseGeocode(lat, lng, true);
           setSelectingPickup(false);
+          if (gMapRef.current) gMapRef.current.panTo({ lat, lng });
         } catch { setError('Could not get address. Search manually.'); }
         finally   { setLocating(false); }
       },
@@ -133,68 +212,77 @@ export default function GuestBooking() {
     );
   };
 
-  /* ── Search debounce ────────────────────── */
+  /* ── Place search (Google Places Autocomplete) ─ */
+  const searchPlace = useCallback(async (query, type) => {
+    if (!query || query.length < 3) {
+      type === 'pickup' ? setPickupSugs([]) : setDropSugs([]);
+      return;
+    }
+    setSugLoading(true);
+    try {
+      await ensureApi();
+      acServiceRef.current.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'in' },
+          location: new window.google.maps.LatLng(25.5941, 85.1376),
+          radius: 400000, // bias toward Bihar (400km radius from Patna)
+        },
+        (preds, status) => {
+          const results = (status === 'OK' && preds) ? preds : [];
+          type === 'pickup' ? setPickupSugs(results) : setDropSugs(results);
+          setSugLoading(false);
+        }
+      );
+    } catch { setSugLoading(false); }
+  }, [ensureApi]);
+
+  /* ── Debounce search on input ────────────── */
   useEffect(() => {
     if (skipPickupSearch.current) { skipPickupSearch.current = false; return; }
-    if (pickupVal.length < 3) { setPickupSuggestions([]); return; }
-    const t = setTimeout(() => searchPlace(pickupVal, 'pickup'), 400);
-    return () => clearTimeout(t);
-  }, [pickupVal]);
+    if (pickupVal.length < 3) { setPickupSugs([]); return; }
+    clearTimeout(pickupTimer.current);
+    pickupTimer.current = setTimeout(() => searchPlace(pickupVal, 'pickup'), 400);
+    return () => clearTimeout(pickupTimer.current);
+  }, [pickupVal, searchPlace]);
 
   useEffect(() => {
     if (skipDropSearch.current) { skipDropSearch.current = false; return; }
-    if (dropVal.length < 3) { setDropSuggestions([]); return; }
-    const t = setTimeout(() => searchPlace(dropVal, 'drop'), 400);
-    return () => clearTimeout(t);
-  }, [dropVal]);
+    if (dropVal.length < 3) { setDropSugs([]); return; }
+    clearTimeout(dropTimer.current);
+    dropTimer.current = setTimeout(() => searchPlace(dropVal, 'drop'), 400);
+    return () => clearTimeout(dropTimer.current);
+  }, [dropVal, searchPlace]);
 
-  const searchPlace = async (query, type) => {
-    setSearchLoading(true);
+  /* ── Select a suggestion ─────────────────── */
+  const selectPlace = async (prediction, type) => {
+    const label = prediction.description;
     try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in`);
-      const data = await res.json();
-      type === 'pickup' ? setPickupSuggestions(data) : setDropSuggestions(data);
-    } catch {} finally { setSearchLoading(false); }
-  };
-
-  const selectPlace = (result, type) => {
-    const coords = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
-    const label  = result.display_name.split(',').slice(0, 3).join(', ');
-    if (type === 'pickup') {
-      skipPickupSearch.current = true;
-      setPickupVal(label); setPickupLocation(label); setPickupCoords(coords);
-      setPickupSuggestions([]); setMapCenter([coords.lat, coords.lng]);
-    } else {
-      skipDropSearch.current = true;
-      setDropVal(label); setDropLocation(label); setDropCoords(coords);
-      setDropSuggestions([]); setMapCenter([coords.lat, coords.lng]);
-    }
-  };
-
-  const handleMapClick = async (latlng) => {
-    try {
-      const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
-      const data = await res.json();
-      const label = data.display_name.split(',').slice(0, 3).join(', ');
-      if (selectingPickupRef.current) {
-        skipPickupSearch.current = true;
-        setPickupVal(label); setPickupLocation(label);
-        setPickupCoords({ lat: latlng.lat, lng: latlng.lng });
-      } else {
-        skipDropSearch.current = true;
-        setDropVal(label); setDropLocation(label);
-        setDropCoords({ lat: latlng.lat, lng: latlng.lng });
-      }
+      await ensureApi();
+      geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
+        if (status !== 'OK' || !results[0]) return;
+        const loc    = results[0].geometry.location;
+        const coords = { lat: loc.lat(), lng: loc.lng() };
+        if (type === 'pickup') {
+          skipPickupSearch.current = true;
+          setPickupVal(label); setPickupLocation(label); setPickupCoords(coords);
+          setPickupSugs([]);
+        } else {
+          skipDropSearch.current = true;
+          setDropVal(label); setDropLocation(label); setDropCoords(coords);
+          setDropSugs([]);
+        }
+        if (gMapRef.current) gMapRef.current.panTo(coords);
+      });
     } catch {}
   };
 
-  /* ── Step 1 → 2 ─────────────────────────── */
+  /* ── Step navigation ─────────────────────── */
   const goToService = () => {
     if (!pickupCoords || !dropCoords) { setError('Please set both pickup and drop locations'); return; }
     setStep(2);
   };
 
-  /* ── Step 2 → 3 (calculate fare) ──────────── */
   const goToVerify = async () => {
     if (!serviceType)  { setError('Please select a service type'); return; }
     if (!name.trim())  { setError('Please enter your full name'); return; }
@@ -203,8 +291,9 @@ export default function GuestBooking() {
     setLoading(true); setError('');
     try {
       const res = await customerApi.calculateFare({
-        pickupLatitude:  pickupCoords.lat, pickupLongitude:  pickupCoords.lng,
-        dropLatitude:    dropCoords.lat,   dropLongitude:    dropCoords.lng,
+        pickupLatitude:  pickupCoords.lat, pickupLongitude: pickupCoords.lng,
+        dropLatitude:    dropCoords.lat,   dropLongitude:   dropCoords.lng,
+        serviceType,
       });
       setFareDetails(res.data);
       setStep(3);
@@ -243,7 +332,7 @@ export default function GuestBooking() {
     if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
   };
 
-  /* ── Step 3 → 4 (create booking) ──────────── */
+  /* ── Create booking ──────────────────────── */
   const verifyAndBook = async () => {
     const otpStr = otp.join('');
     if (otpStr.length !== 6) { setError('Please enter the complete 6-digit OTP'); return; }
@@ -267,7 +356,7 @@ export default function GuestBooking() {
     } finally { setLoading(false); }
   };
 
-  /* ── Payment ─────────────────────────────── */
+  /* ── Razorpay payment ────────────────────── */
   const openRazorpay = () => {
     const options = {
       key: paymentOrder.keyId, amount: paymentOrder.amount, currency: paymentOrder.currency,
@@ -349,18 +438,18 @@ export default function GuestBooking() {
                     value={pickupVal}
                     onChange={e => {
                       const v = e.target.value; setPickupVal(v); setSelectingPickup(true);
-                      if (!v) { setPickupLocation(''); setPickupCoords(null); setPickupSuggestions([]); }
+                      if (!v) { setPickupLocation(''); setPickupCoords(null); setPickupSugs([]); }
                     }}
                     onFocus={() => setSelectingPickup(true)}
-                    placeholder="Pickup location"
+                    placeholder="Pickup — street, village, landmark, mohalla"
                   />
-                  {pickupVal.length >= 3 && searchLoading && <span className="gb-input-spinner"><i className="fas fa-spinner fa-spin" /></span>}
-                  {pickupSuggestions.length > 0 && (
+                  {pickupVal.length >= 3 && sugLoading && <span className="gb-input-spinner"><i className="fas fa-spinner fa-spin" /></span>}
+                  {pickupSugs.length > 0 && (
                     <div className="gb-suggestions">
-                      {pickupSuggestions.map((s, i) => (
+                      {pickupSugs.map((s, i) => (
                         <div key={i} className="gb-suggestion" onMouseDown={() => selectPlace(s, 'pickup')}>
                           <i className="fas fa-map-marker-alt" />
-                          <span>{s.display_name.split(',').slice(0, 3).join(', ')}</span>
+                          <span>{s.description}</span>
                         </div>
                       ))}
                     </div>
@@ -378,18 +467,18 @@ export default function GuestBooking() {
                     value={dropVal}
                     onChange={e => {
                       const v = e.target.value; setDropVal(v); setSelectingPickup(false);
-                      if (!v) { setDropLocation(''); setDropCoords(null); setDropSuggestions([]); }
+                      if (!v) { setDropLocation(''); setDropCoords(null); setDropSugs([]); }
                     }}
                     onFocus={() => setSelectingPickup(false)}
-                    placeholder="Drop location"
+                    placeholder="Drop — street, village, landmark, mohalla"
                   />
-                  {dropVal.length >= 3 && searchLoading && <span className="gb-input-spinner"><i className="fas fa-spinner fa-spin" /></span>}
-                  {dropSuggestions.length > 0 && (
+                  {dropVal.length >= 3 && sugLoading && <span className="gb-input-spinner"><i className="fas fa-spinner fa-spin" /></span>}
+                  {dropSugs.length > 0 && (
                     <div className="gb-suggestions">
-                      {dropSuggestions.map((s, i) => (
+                      {dropSugs.map((s, i) => (
                         <div key={i} className="gb-suggestion" onMouseDown={() => selectPlace(s, 'drop')}>
                           <i className="fas fa-map-marker-alt" />
-                          <span>{s.display_name.split(',').slice(0, 3).join(', ')}</span>
+                          <span>{s.description}</span>
                         </div>
                       ))}
                     </div>
@@ -398,7 +487,7 @@ export default function GuestBooking() {
               </div>
             </div>
 
-            {/* Map */}
+            {/* Google Map */}
             <div className="gb-map-container">
               <div className="gb-map-toggle">
                 <button className={`gb-toggle-btn${selectingPickup ? ' active' : ''}`} onClick={() => setSelectingPickup(true)}>
@@ -408,16 +497,7 @@ export default function GuestBooking() {
                   <i className="fas fa-map-marker-alt" /> Pin Drop
                 </button>
               </div>
-              <MapContainer center={mapCenter} zoom={12} style={{ height: '240px', width: '100%' }} zoomControl={false} scrollWheelZoom={false}>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                />
-                <MapFlyTo center={mapCenter} />
-                <MapClickHandler onMapClick={handleMapClick} />
-                {pickupCoords && <Marker position={[pickupCoords.lat, pickupCoords.lng]}><Popup>Pickup</Popup></Marker>}
-                {dropCoords   && <Marker position={[dropCoords.lat,   dropCoords.lng]}><Popup>Drop</Popup></Marker>}
-              </MapContainer>
+              <div ref={mapDivRef} style={{ height: '240px', width: '100%', borderRadius: '8px' }} />
               <p className="gb-map-hint"><i className="fas fa-hand-pointer" /> Tap map to pin location</p>
             </div>
 

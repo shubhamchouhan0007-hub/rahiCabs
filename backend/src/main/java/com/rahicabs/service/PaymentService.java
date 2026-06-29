@@ -27,6 +27,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
+    private final NotificationService notificationService;
 
     @Value("${app.razorpay.key-id:}")
     private String razorpayKeyId;
@@ -88,11 +89,8 @@ public class PaymentService {
         Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
-        // Dev mock: skip signature verification
         if (request.getRazorpayOrderId().startsWith("order_dev_")) {
-            log.warn("Dev mock order — skipping signature verification");
-            markPaymentSuccess(payment, request.getRazorpayPaymentId(), "dev_mock_sig");
-            return ApiResponse.ok("Payment recorded (dev mode)");
+            return ApiResponse.error("Dev mode orders cannot be verified. Configure Razorpay keys to accept real payments.");
         }
 
         if (!isConfigured()) {
@@ -130,8 +128,9 @@ public class PaymentService {
 
         Booking booking = payment.getBooking();
         booking.setAdvancePaid(true);
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.PENDING);
         bookingRepository.save(booking);
+        notificationService.onPaymentConfirmed(booking);
     }
 
     private String hmacSha256(String data, String secret) throws Exception {

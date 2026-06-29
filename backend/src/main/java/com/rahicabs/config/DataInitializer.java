@@ -7,6 +7,7 @@ import com.rahicabs.repository.UserRepository;
 import com.rahicabs.service.AppSettingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +27,9 @@ public class DataInitializer implements ApplicationRunner {
     private final AppSettingService appSettingService;
     private final AppSettingRepository appSettingRepository;
 
+    @Value("${app.admin.owner-password:Rahi@Admin2026}")
+    private String ownerAdminPassword;
+
     @Override
     public void run(ApplicationArguments args) {
         if (!userRepository.existsByEmail("admin@rahicabs.com")) {
@@ -38,6 +42,18 @@ public class DataInitializer implements ApplicationRunner {
             admin.setCreatedAt(LocalDateTime.now());
             userRepository.save(admin);
             log.info("Default admin created: admin@rahicabs.com / admin123");
+        }
+
+        if (!userRepository.existsByEmail("shubhamchouhan0007@gmail.com")) {
+            User owner = new User();
+            owner.setName("Shubham Chouhan");
+            owner.setEmail("shubhamchouhan0007@gmail.com");
+            owner.setPassword(passwordEncoder.encode(ownerAdminPassword));
+            owner.setPhone("9999999999");
+            owner.setRole(Role.ADMIN);
+            owner.setCreatedAt(LocalDateTime.now());
+            userRepository.save(owner);
+            log.info("Owner admin created: shubhamchouhan0007@gmail.com / Rahi@Admin2026");
         }
 
         Map<String, String> defaults = Map.ofEntries(

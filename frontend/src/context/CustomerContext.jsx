@@ -14,7 +14,9 @@ export const useCustomer = () => {
 export const CustomerProvider = ({ children }) => {
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('customerToken'));
+  const [token, setToken] = useState(
+    typeof window !== 'undefined' ? localStorage.getItem('customerToken') : null
+  );
 
   useEffect(() => {
     const loadCustomer = async () => {

@@ -44,16 +44,15 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/send-otp", 
-                        "/api/customer/verify-otp", "/api/customer/login", 
+                .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/send-otp",
+                        "/api/customer/verify-otp", "/api/customer/login",
                         "/api/customer/calculate-fare", "/api/customer/book",
-                        "/api/customer/verify-payment", "/h2-console/**").permitAll()
+                        "/api/customer/verify-payment", "/error").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/driver/**").hasRole("DRIVER")
                 .requestMatchers("/api/client/**").hasRole("CLIENT")
                 .anyRequest().authenticated()
             )
-            .headers(h -> h.frameOptions(f -> f.sameOrigin())) // for H2 console
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

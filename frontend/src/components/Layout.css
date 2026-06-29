@@ -72,7 +72,7 @@
   cursor: pointer; display: flex; align-items: center; gap: 6px;
   font-family: 'Poppins', sans-serif;
 }
-.topbar-brand i { color: #f5a623; }
+.topbar-brand i { color: #c9841a; }
 .topbar-brand:hover { opacity: .8; }
 .topbar-greeting { font-weight: 600; color: var(--text); }
 .page-body { padding: 28px 28px; flex: 1; }
