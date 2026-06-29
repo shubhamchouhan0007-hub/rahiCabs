@@ -10,6 +10,7 @@ import AdminDashboard  from './pages/admin/AdminDashboard'
 import DriverDashboard from './pages/driver/DriverDashboard'
 import GuestBooking from './pages/customer/GuestBooking'
 import CustomerDashboard from './pages/customer/CustomerDashboard'
+import FloatingContact from './components/FloatingContact'
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
             
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <FloatingContact />
         </BrowserRouter>
       </CustomerProvider>
     </AuthProvider>

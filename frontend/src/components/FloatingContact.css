@@ -1,0 +1,79 @@
+/* Floating Call + WhatsApp buttons — fixed on every customer-facing page */
+.rc-float {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rc-float-btn {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.6rem;
+  text-decoration: none;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: rcFloatIn 0.45s ease both;
+}
+.rc-float-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  color: #fff;
+}
+
+.rc-wa   { background: #25d366; animation-delay: 0.05s; }
+.rc-call { background: #134e4a; animation-delay: 0.15s; }  /* teal — matches theme */
+
+/* Pulsing ring on the WhatsApp button to draw attention */
+.rc-wa::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: rcPulse 2.2s infinite;
+  pointer-events: none;
+}
+@keyframes rcPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }
+  70%  { box-shadow: 0 0 0 16px rgba(37, 211, 102, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+
+/* Hover label */
+.rc-float-tip {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.rc-float-btn:hover .rc-float-tip { opacity: 1; }
+
+@keyframes rcFloatIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.8); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 600px) {
+  .rc-float { bottom: 16px; right: 16px; gap: 12px; }
+  .rc-float-btn { width: 50px; height: 50px; font-size: 1.4rem; }
+  .rc-float-tip { display: none; }  /* no hover on touch */
+}
