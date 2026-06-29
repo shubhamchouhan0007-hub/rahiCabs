@@ -490,9 +490,10 @@ function AdminSettings() {
         {tab === 'contact' && (
           <div className="settings-section">
             <h3>Contact Information</h3>
-            <p className="settings-desc">Shown in the contact section and footer of the homepage.</p>
+            <p className="settings-desc">Shown in the homepage contact section, footer, and the floating Call / WhatsApp buttons on every page.</p>
             <div className="settings-grid">
-              <SettingField label="Phone Number" value={settings['contact.phone'] || ''} onChange={v => set('contact.phone', v)} hint="+91 XXXXX XXXXX" />
+              <SettingField label="Phone Number (Call button)" value={settings['contact.phone'] || ''} onChange={v => set('contact.phone', v)} hint="e.g. 9876543210 or +91 98765 43210" />
+              <SettingField label="WhatsApp Number" value={settings['contact.whatsapp'] || ''} onChange={v => set('contact.whatsapp', v)} hint="10-digit number; if blank, uses the phone number above" />
               <SettingField label="Email Address" type="email" value={settings['contact.email'] || ''} onChange={v => set('contact.email', v)} hint="info@rahicab.com" />
             </div>
           </div>

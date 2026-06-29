@@ -64,6 +64,7 @@ public class DataInitializer implements ApplicationRunner {
             entry("stats.drivers",      "150"),
             entry("stats.cities",       "20"),
             entry("contact.phone",      "+91 99999 99999"),
+            entry("contact.whatsapp",   ""),
             entry("contact.email",      "info@rahicab.com"),
             entry("banner.enabled",     "false"),
             entry("banner.text",        ""),
