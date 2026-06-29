@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import customerApi from '../../services/customerApi';
 import TopBar from '../../components/TopBar';
 import { loadGoogleMaps } from '../../utils/loadGoogleMaps';
+import { auth } from '../../utils/firebase';
+import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import './GuestBooking.css';
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
@@ -69,6 +71,8 @@ export default function GuestBooking() {
   const [otp, setOtp]                 = useState(['', '', '', '', '', '']);
   const otpRefs                        = useRef([]);
   const [otpSent, setOtpSent]         = useState(false);
+  const recaptchaRef                   = useRef(null);  // Firebase invisible reCAPTCHA
+  const confirmationRef                = useRef(null);  // Firebase confirmationResult
   const timerRef                       = useRef(null);
   const [countdown, setCountdown]     = useState(0);
 
@@ -315,10 +319,22 @@ export default function GuestBooking() {
     if (!phoneNumber || phoneNumber.length !== 10) { setError('Please enter a valid 10-digit phone number'); return; }
     setLoading(true); setError('');
     try {
-      await customerApi.sendOtp(phoneNumber);
+      // Set up the invisible reCAPTCHA once (required by Firebase phone auth on web)
+      if (!recaptchaRef.current) {
+        recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+      }
+      // Firebase sends the real SMS OTP to +91<number>
+      confirmationRef.current = await signInWithPhoneNumber(auth, '+91' + phoneNumber, recaptchaRef.current);
+      setOtp(['', '', '', '', '', '']);
       setOtpSent(true); startCountdown();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP');
+      // Reset reCAPTCHA so the user can retry cleanly
+      try { recaptchaRef.current?.clear(); } catch {}
+      recaptchaRef.current = null;
+      const code = err?.code || '';
+      if (code === 'auth/too-many-requests') setError('Too many attempts. Please try again later.');
+      else if (code === 'auth/invalid-phone-number') setError('Invalid phone number.');
+      else setError('Failed to send OTP. Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -336,8 +352,13 @@ export default function GuestBooking() {
   const verifyAndBook = async () => {
     const otpStr = otp.join('');
     if (otpStr.length !== 6) { setError('Please enter the complete 6-digit OTP'); return; }
+    if (!confirmationRef.current) { setError('Please request an OTP first.'); return; }
     setLoading(true); setError('');
     try {
+      // Verify the OTP with Firebase → get a signed ID token proving phone ownership
+      const result = await confirmationRef.current.confirm(otpStr);
+      const firebaseIdToken = await result.user.getIdToken();
+
       const res = await customerApi.createBooking({
         name, phoneNumber, email,
         pickupLocation, pickupLatitude: pickupCoords.lat, pickupLongitude: pickupCoords.lng,
@@ -346,13 +367,15 @@ export default function GuestBooking() {
         scheduledAt: journeyDate ? journeyDate + ':00' : null,
         distance: fareDetails.distance, duration: fareDetails.duration, totalFare: fareDetails.totalFare,
         notes: returnDate ? `Return date: ${returnDate}` : '',
-        otp: otpStr,
+        firebaseIdToken,
       });
       setPaymentOrder(res.data.paymentOrder);
       setBookingId(res.data.bookingId);
       setStep(4);
     } catch (err) {
-      setError(err.response?.data?.message || 'Booking failed. Try again.');
+      if (err?.code === 'auth/invalid-verification-code') setError('Incorrect OTP. Please check and try again.');
+      else if (err?.code === 'auth/code-expired') setError('OTP expired. Please request a new one.');
+      else setError(err.response?.data?.message || 'Booking failed. Try again.');
     } finally { setLoading(false); }
   };
 
@@ -636,6 +659,8 @@ export default function GuestBooking() {
               <i className="fas fa-arrow-left" /> Back
             </button>
             <p className="gb-otp-note"><i className="fas fa-info-circle" /> Verifying creates your RahiCab account automatically</p>
+            {/* Firebase invisible reCAPTCHA mounts here */}
+            <div id="recaptcha-container" />
           </div>
         )}
 

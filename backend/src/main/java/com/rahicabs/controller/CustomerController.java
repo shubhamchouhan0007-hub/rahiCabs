@@ -31,6 +31,7 @@ public class CustomerController {
     private final CustomerRepository customerRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final NotificationService notificationService;
+    private final FirebaseService firebaseService;
 
     // ========== OTP & Authentication ==========
 
@@ -62,10 +63,16 @@ public class CustomerController {
     public ResponseEntity<Map<String, Object>> createBooking(
             @Valid @RequestBody CustomerBookingRequest request) {
         
-        // Verify OTP
-        ApiResponse otpVerifyResult = otpService.verifyOtp(request.getPhoneNumber(), request.getOtp());
-        if (!otpVerifyResult.isSuccess()) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", otpVerifyResult.getMessage()));
+        // Verify the phone number via the Firebase ID token (OTP done client-side by Firebase)
+        String verifiedPhone;
+        try {
+            verifiedPhone = firebaseService.verifyAndGetPhone(request.getFirebaseIdToken());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+        if (!verifiedPhone.equals(request.getPhoneNumber())) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", "Verified phone does not match the booking phone number."));
         }
 
         // Get or create customer

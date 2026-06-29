@@ -52,7 +52,6 @@ public class CustomerBookingRequest {
 
     private String notes;
 
-    @NotBlank(message = "OTP is required")
-    @Pattern(regexp = "^[0-9]{6}$", message = "OTP must be 6 digits")
-    private String otp;
+    @NotBlank(message = "Phone verification token is required")
+    private String firebaseIdToken;
 }
