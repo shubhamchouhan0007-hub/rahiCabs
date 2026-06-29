@@ -1,0 +1,12 @@
+# RahiCab robots.txt
+User-agent: *
+Allow: /$
+Allow: /book
+Allow: /login
+
+# Keep authenticated dashboards out of search results
+Disallow: /admin
+Disallow: /driver
+Disallow: /client
+
+Sitemap: https://rahicab.in/sitemap.xml

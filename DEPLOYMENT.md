@@ -145,6 +145,13 @@ CORS is set last because the backend must know the live frontend domain. **If AP
 
 ---
 
+## 5b. SEO assets (before/at launch)
+
+- [ ] **Add the social-share image.** `index.html` references `https://rahicab.in/og-image.png` for WhatsApp/Facebook/Twitter previews, but the file doesn't exist yet. Create a **1200×630px** banner (logo + "Premium Cab Service in Bihar" + a car image — free templates on Canva) and save it as **`frontend/public/og-image.png`**. Until added, shared links show a text-only preview (still works, just no image).
+- [ ] **Update the phone number** in the JSON-LD structured data in `frontend/index.html` (currently the placeholder `+91-99999-99999`) — this is what shows in Google's local listings.
+- [ ] After deploy, submit `https://rahicab.in/sitemap.xml` in [Google Search Console](https://search.google.com/search-console) to speed up indexing.
+- [ ] Test your link preview at [opengraph.xyz](https://www.opengraph.xyz) by pasting `https://rahicab.in`.
+
 ## 6. Go-live checklist (before real customers)
 
 - [ ] **Razorpay** → switch test keys to **live** keys (`rzp_live_...`) in Railway vars
@@ -156,6 +163,11 @@ CORS is set last because the backend must know the live frontend domain. **If AP
 - [ ] Remove the default admin (`admin@rahicabs.com / admin123`) from `DataInitializer` or change its password
 
 ---
+
+## 7. Post-launch improvements (not blockers)
+
+- [ ] **Homepage pre-rendering (SEO Tier 2).** App is a client-rendered SPA — Google renders it fine and social/WhatsApp previews already work via Open Graph tags, but pre-rendering the landing page boosts rankings and non-Google crawlers. Do this with `vite-react-ssg` (Vercel-safe, Node-based — avoid `react-snap`, it breaks Vercel builds) on a **separate branch** and test every route + auth flow before merging. Groundwork done: `CustomerContext` is already SSR-safe.
+- [ ] **Connection pooling at scale.** If concurrent users grow past ~200, raise HikariCP `maximum-pool-size` and consider Redis caching for fare lookups.
 
 ## Admin login (after deploy)
 
