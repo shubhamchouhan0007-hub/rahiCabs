@@ -18,7 +18,16 @@ const SERVICES = [
   { type: 'OUTSTATION',       icon: 'fas fa-map-marked-alt',  label: 'Outstation',       desc: 'Intercity travel across Bihar',     color: '#ec4899' },
 ];
 
-const STEPS = ['Location', 'Service', 'Verify', 'Payment'];
+const STEPS = ['Service', 'Location', 'Verify', 'Payment'];
+
+// Fallback airports shown for Airport Transfer before a pickup is set
+const POPULAR_AIRPORTS = [
+  { name: 'Jay Prakash Narayan Airport, Patna', lat: 25.5913, lng: 85.0880 },
+  { name: 'Gaya International Airport',          lat: 24.7443, lng: 84.9512 },
+  { name: 'Darbhanga Airport',                  lat: 26.1928, lng: 85.9166 },
+  { name: 'Lal Bahadur Shastri Airport, Varanasi', lat: 25.4524, lng: 82.8593 },
+  { name: 'Bagdogra Airport',                   lat: 26.6812, lng: 88.3286 },
+];
 
 export default function GuestBooking() {
   const navigate = useNavigate();
@@ -130,13 +139,11 @@ export default function GuestBooking() {
     } catch { setNearbyAirports([]); }
   }, [ensureApi]);
 
-  const selectAirport = (airport) => {
-    const loc = airport.geometry.location;
-    const coords = { lat: loc.lat(), lng: loc.lng() };
+  const setAirportDrop = (name, lat, lng) => {
     skipDropSearch.current = true;
-    setDropVal(airport.name); setDropLocation(airport.name); setDropCoords(coords);
-    setDropSugs([]); setNearbyAirports([]);
-    if (gMapRef.current) gMapRef.current.panTo(coords);
+    setDropVal(name); setDropLocation(name); setDropCoords({ lat, lng });
+    setDropSugs([]);
+    if (gMapRef.current) gMapRef.current.panTo({ lat, lng });
   };
 
   useEffect(() => {
@@ -144,9 +151,9 @@ export default function GuestBooking() {
     else setNearbyAirports([]);
   }, [serviceType, pickupCoords, findNearestAirports]);
 
-  /* ── Init Google Map when step 1 renders ─── */
+  /* ── Init Google Map when the Location step renders ─── */
   useEffect(() => {
-    if (step !== 1) return;
+    if (step !== 2) return;
     let cancelled = false;
 
     loadGoogleMaps(MAPS_KEY).then(() => {
@@ -320,16 +327,18 @@ export default function GuestBooking() {
   };
 
   /* ── Step navigation ─────────────────────── */
-  const goToService = () => {
-    if (!pickupCoords || !dropCoords) { setError('Please set both pickup and drop locations'); return; }
-    setStep(2);
-  };
-
-  const goToVerify = async () => {
+  // Step 1 (Service + details) → Step 2 (Location)
+  const goToLocation = () => {
     if (!serviceType)  { setError('Please select a service type'); return; }
     if (!name.trim())  { setError('Please enter your full name'); return; }
     if (!journeyDate)  { setError('Please select your journey date'); return; }
     if (serviceType === 'ROUND_TRIP' && !returnDate) { setError('Please select a return date for Round Trip'); return; }
+    setError(''); setStep(2);
+  };
+
+  // Step 2 (Location) → Step 3 (Verify) — calculate the fare here (service + location both known now)
+  const goToVerify = async () => {
+    if (!pickupCoords || !dropCoords) { setError('Please set both pickup and drop locations'); return; }
     setLoading(true); setError('');
     try {
       const res = await customerApi.calculateFare({
@@ -477,9 +486,9 @@ export default function GuestBooking() {
         )}
 
         {/* ══════════════════════════════════════
-            STEP 1 — LOCATION
+            STEP 2 — LOCATION
         ══════════════════════════════════════ */}
-        {step === 1 && (
+        {step === 2 && (
           <div className="gb-card">
             <h2 className="gb-card-title"><i className="fas fa-map-marked-alt" /> Set Your Route</h2>
 
@@ -550,23 +559,31 @@ export default function GuestBooking() {
                   )}
                 </div>
               </div>
-              {serviceType === 'AIRPORT_TRANSFER' && nearbyAirports.length > 0 && (
+              {serviceType === 'AIRPORT_TRANSFER' && (
                 <div style={{ marginTop: 12 }}>
                   <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#0f766e', marginBottom: 7 }}>
-                    <i className="fas fa-plane-departure" /> Nearest airports to your pickup
+                    <i className="fas fa-plane-departure" /> {nearbyAirports.length > 0 ? 'Nearest airports to your pickup' : 'Popular airports'} — tap to set as your drop
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {nearbyAirports.map((a, i) => (
-                      <button type="button" key={i} onClick={() => selectAirport(a)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px',
-                          border: '1.5px solid #99f6e4', background: '#f0fdfa', borderRadius: 100,
-                          fontSize: '.82rem', fontWeight: 600, color: '#134e4a', cursor: 'pointer',
-                        }}>
-                        <i className="fas fa-plane" style={{ fontSize: '.72rem' }} />
-                        {a.name}
-                      </button>
-                    ))}
+                    {(nearbyAirports.length > 0
+                      ? nearbyAirports.map(a => ({ name: a.name, lat: a.geometry.location.lat(), lng: a.geometry.location.lng() }))
+                      : POPULAR_AIRPORTS
+                    ).map((a, i) => {
+                      const selected = dropLocation === a.name;
+                      return (
+                        <button type="button" key={i} onClick={() => setAirportDrop(a.name, a.lat, a.lng)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px',
+                            border: selected ? '2px solid #134e4a' : '1.5px solid #99f6e4',
+                            background: selected ? '#134e4a' : '#f0fdfa',
+                            color: selected ? '#fff' : '#134e4a',
+                            borderRadius: 100, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer',
+                          }}>
+                          <i className="fas fa-plane" style={{ fontSize: '.72rem' }} />
+                          {a.name}{selected && <i className="fas fa-check" style={{ marginLeft: 2 }} />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -586,16 +603,19 @@ export default function GuestBooking() {
               <p className="gb-map-hint"><i className="fas fa-hand-pointer" /> Tap map to pin location</p>
             </div>
 
-            <button className="gb-btn-primary" onClick={goToService} disabled={!pickupCoords || !dropCoords}>
-              <i className="fas fa-chevron-right" /> Choose Service
-            </button>
+            <div className="gb-btn-row">
+              <button className="gb-btn-back" onClick={() => setStep(1)}><i className="fas fa-arrow-left" /> Back</button>
+              <button className="gb-btn-primary gb-btn-grow" onClick={goToVerify} disabled={loading || !pickupCoords || !dropCoords}>
+                {loading ? <><i className="fas fa-spinner fa-spin" /> Calculating…</> : <><i className="fas fa-shield-alt" /> Verify Phone &amp; Continue</>}
+              </button>
+            </div>
           </div>
         )}
 
         {/* ══════════════════════════════════════
-            STEP 2 — SERVICE + DETAILS
+            STEP 1 — SERVICE + DETAILS
         ══════════════════════════════════════ */}
-        {step === 2 && (
+        {step === 1 && (
           <div className="gb-card">
             <h2 className="gb-card-title"><i className="fas fa-th-large" /> Choose Your Service</h2>
 
@@ -615,39 +635,6 @@ export default function GuestBooking() {
                 </div>
               ))}
             </div>
-
-            {serviceType === 'AIRPORT_TRANSFER' && (
-              <div className="gb-details-section">
-                <h3 className="gb-section-title"><i className="fas fa-plane-departure" /> Destination Airport</h3>
-                <p style={{ fontSize: '.82rem', color: '#64748b', margin: '0 0 10px' }}>
-                  Nearest airports to your pickup — tap one to set it as your drop.
-                </p>
-                {nearbyAirports.length === 0 ? (
-                  <p style={{ fontSize: '.82rem', color: '#94a3b8' }}>
-                    <i className="fas fa-spinner fa-spin" /> Finding airports near you…
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {nearbyAirports.map((a, i) => {
-                      const selected = dropLocation === a.name;
-                      return (
-                        <button type="button" key={i} onClick={() => selectAirport(a)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-                            border: selected ? '2px solid #134e4a' : '1.5px solid #99f6e4',
-                            background: selected ? '#134e4a' : '#f0fdfa',
-                            color: selected ? '#fff' : '#134e4a',
-                            borderRadius: 10, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
-                          }}>
-                          <i className="fas fa-plane" /> {a.name}
-                          {selected && <i className="fas fa-check" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Personal details */}
             <div className="gb-details-section">
@@ -711,9 +698,9 @@ export default function GuestBooking() {
             </div>
 
             <div className="gb-btn-row">
-              <button className="gb-btn-back" onClick={() => setStep(1)}><i className="fas fa-arrow-left" /> Back</button>
-              <button className="gb-btn-primary gb-btn-grow" onClick={goToVerify} disabled={loading}>
-                {loading ? <><i className="fas fa-spinner fa-spin" /> Calculating...</> : <><i className="fas fa-shield-alt" /> Verify Phone &amp; Continue</>}
+              <button className="gb-btn-back" onClick={() => navigate('/')}><i className="fas fa-arrow-left" /> Back</button>
+              <button className="gb-btn-primary gb-btn-grow" onClick={goToLocation}>
+                <i className="fas fa-map-marker-alt" /> Continue to Location
               </button>
             </div>
           </div>
