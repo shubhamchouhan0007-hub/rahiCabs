@@ -1,16 +1,23 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CustomerProvider, useCustomer } from './context/CustomerContext'
 import { ToastProvider } from './context/ToastContext'
-import Home         from './pages/Home'
-import Login        from './pages/Login'
-import Register     from './pages/Register'
-import ClientDashboard from './pages/client/ClientDashboard'
-import AdminDashboard  from './pages/admin/AdminDashboard'
-import DriverDashboard from './pages/driver/DriverDashboard'
-import GuestBooking from './pages/customer/GuestBooking'
-import CustomerDashboard from './pages/customer/CustomerDashboard'
 import FloatingContact from './components/FloatingContact'
+
+// Code-split every page so first paint only ships what's needed
+const Home              = lazy(() => import('./pages/Home'))
+const Login             = lazy(() => import('./pages/Login'))
+const Register          = lazy(() => import('./pages/Register'))
+const ClientDashboard   = lazy(() => import('./pages/client/ClientDashboard'))
+const AdminDashboard    = lazy(() => import('./pages/admin/AdminDashboard'))
+const DriverDashboard   = lazy(() => import('./pages/driver/DriverDashboard'))
+const GuestBooking      = lazy(() => import('./pages/customer/GuestBooking'))
+const CustomerDashboard = lazy(() => import('./pages/customer/CustomerDashboard'))
+
+function PageLoader() {
+  return <div className="centered-loader"><i className="fas fa-spinner fa-spin" /></div>
+}
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth()
@@ -33,6 +40,7 @@ export default function App() {
       <AuthProvider>
         <CustomerProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/"        element={<Home />} />
             <Route path="/login"   element={<Login />} />
@@ -58,6 +66,7 @@ export default function App() {
             
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
           <FloatingContact />
         </BrowserRouter>
       </CustomerProvider>

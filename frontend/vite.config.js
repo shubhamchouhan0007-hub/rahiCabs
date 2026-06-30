@@ -8,5 +8,17 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080'
     }
-  }
+  },
+  build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        // Split big libraries into separate, long-cacheable chunks
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'firebase': ['firebase/app', 'firebase/auth'],
+        },
+      },
+    },
+  },
 })
