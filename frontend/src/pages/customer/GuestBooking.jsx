@@ -616,6 +616,39 @@ export default function GuestBooking() {
               ))}
             </div>
 
+            {serviceType === 'AIRPORT_TRANSFER' && (
+              <div className="gb-details-section">
+                <h3 className="gb-section-title"><i className="fas fa-plane-departure" /> Destination Airport</h3>
+                <p style={{ fontSize: '.82rem', color: '#64748b', margin: '0 0 10px' }}>
+                  Nearest airports to your pickup — tap one to set it as your drop.
+                </p>
+                {nearbyAirports.length === 0 ? (
+                  <p style={{ fontSize: '.82rem', color: '#94a3b8' }}>
+                    <i className="fas fa-spinner fa-spin" /> Finding airports near you…
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                    {nearbyAirports.map((a, i) => {
+                      const selected = dropLocation === a.name;
+                      return (
+                        <button type="button" key={i} onClick={() => selectAirport(a)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+                            border: selected ? '2px solid #134e4a' : '1.5px solid #99f6e4',
+                            background: selected ? '#134e4a' : '#f0fdfa',
+                            color: selected ? '#fff' : '#134e4a',
+                            borderRadius: 10, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
+                          }}>
+                          <i className="fas fa-plane" /> {a.name}
+                          {selected && <i className="fas fa-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Personal details */}
             <div className="gb-details-section">
               <h3 className="gb-section-title"><i className="fas fa-user" /> Your Details</h3>
