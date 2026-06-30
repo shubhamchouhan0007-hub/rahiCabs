@@ -53,6 +53,9 @@ public class FareCalculationService {
             case "ONE_WAY":
                 totalFare = slabFare(distance) + SERVICE_GST;
                 break;
+            case "AIRPORT_TRANSFER":
+                totalFare = airportFare(distance);
+                break;
             case "OUTSTATION": {
                 boolean suv  = "SUV".equalsIgnoreCase(request.getVehicleType());
                 double  base = suv ? 2000.0 : 1500.0;   // per 24 hr
@@ -84,6 +87,22 @@ public class FareCalculationService {
         if (km <= 100) return km * 12.0;
         if (km <= 200) return 100 * 12.0 + (km - 100) * 11.0;
         return 100 * 12.0 + 100 * 11.0 + (km - 200) * 10.0;
+    }
+
+    /**
+     * Airport transfer slabs: ₹33/km ≤30, ₹30/km 30–50, ₹27/km 50–100,
+     * ₹24/km 100–150, ₹22/km 150–200, ₹20/km beyond 200. Charged on each band.
+     */
+    private double airportFare(double km) {
+        double[] edges = {30, 50, 100, 150, 200};      // band upper limits
+        double[] rates = {33, 30, 27, 24, 22, 20};     // rate within each band
+        double fare = 0, prev = 0;
+        for (int i = 0; i < edges.length; i++) {
+            if (km <= edges[i]) return fare + (km - prev) * rates[i];
+            fare += (edges[i] - prev) * rates[i];
+            prev = edges[i];
+        }
+        return fare + (km - prev) * rates[rates.length - 1]; // 200+ km
     }
 
     private boolean isGoogleConfigured() {
