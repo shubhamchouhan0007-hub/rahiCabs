@@ -38,6 +38,7 @@ export default function GuestBooking() {
 
   const [pickupSugs, setPickupSugs]     = useState([]);
   const [dropSugs, setDropSugs]         = useState([]);
+  const [nearbyAirports, setNearbyAirports] = useState([]);
   const [sugLoading, setSugLoading]     = useState(false);
   const skipPickupSearch = useRef(false);
   const skipDropSearch   = useRef(false);
@@ -47,6 +48,7 @@ export default function GuestBooking() {
   // Google API refs
   const acServiceRef     = useRef(null);
   const geocoderRef      = useRef(null);
+  const placesServiceRef = useRef(null);
   const mapDivRef        = useRef(null);
   const gMapRef          = useRef(null);
   const pickupMarkerRef  = useRef(null);
@@ -105,7 +107,42 @@ export default function GuestBooking() {
     await loadGoogleMaps(MAPS_KEY);
     if (!acServiceRef.current) acServiceRef.current = new window.google.maps.places.AutocompleteService();
     if (!geocoderRef.current)  geocoderRef.current  = new window.google.maps.Geocoder();
+    if (!placesServiceRef.current) placesServiceRef.current = new window.google.maps.places.PlacesService(document.createElement('div'));
   }, []);
+
+  /* ── Nearest airports (Airport Transfer) ─── */
+  const findNearestAirports = useCallback(async (coords) => {
+    try {
+      await ensureApi();
+      placesServiceRef.current.nearbySearch(
+        {
+          location: new window.google.maps.LatLng(coords.lat, coords.lng),
+          rankBy: window.google.maps.places.RankBy.DISTANCE,
+          type: 'airport',
+        },
+        (results, status) => {
+          setNearbyAirports(
+            status === window.google.maps.places.PlacesServiceStatus.OK && results
+              ? results.slice(0, 3) : []
+          );
+        }
+      );
+    } catch { setNearbyAirports([]); }
+  }, [ensureApi]);
+
+  const selectAirport = (airport) => {
+    const loc = airport.geometry.location;
+    const coords = { lat: loc.lat(), lng: loc.lng() };
+    skipDropSearch.current = true;
+    setDropVal(airport.name); setDropLocation(airport.name); setDropCoords(coords);
+    setDropSugs([]); setNearbyAirports([]);
+    if (gMapRef.current) gMapRef.current.panTo(coords);
+  };
+
+  useEffect(() => {
+    if (serviceType === 'AIRPORT_TRANSFER' && pickupCoords) findNearestAirports(pickupCoords);
+    else setNearbyAirports([]);
+  }, [serviceType, pickupCoords, findNearestAirports]);
 
   /* ── Init Google Map when step 1 renders ─── */
   useEffect(() => {
@@ -513,6 +550,26 @@ export default function GuestBooking() {
                   )}
                 </div>
               </div>
+              {serviceType === 'AIRPORT_TRANSFER' && nearbyAirports.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#0f766e', marginBottom: 7 }}>
+                    <i className="fas fa-plane-departure" /> Nearest airports to your pickup
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {nearbyAirports.map((a, i) => (
+                      <button type="button" key={i} onClick={() => selectAirport(a)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px',
+                          border: '1.5px solid #99f6e4', background: '#f0fdfa', borderRadius: 100,
+                          fontSize: '.82rem', fontWeight: 600, color: '#134e4a', cursor: 'pointer',
+                        }}>
+                        <i className="fas fa-plane" style={{ fontSize: '.72rem' }} />
+                        {a.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Google Map */}
