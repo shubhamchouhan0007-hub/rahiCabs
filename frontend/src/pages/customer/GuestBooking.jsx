@@ -65,6 +65,7 @@ export default function GuestBooking() {
   const [email, setEmail]             = useState('');
   const [journeyDate, setJourneyDate] = useState('');
   const [returnDate, setReturnDate]   = useState('');
+  const [vehicleType, setVehicleType] = useState('SEDAN');  // for OUTSTATION pricing
 
   /* ── Step 3: Phone + OTP ───────────────── */
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -298,6 +299,7 @@ export default function GuestBooking() {
         pickupLatitude:  pickupCoords.lat, pickupLongitude: pickupCoords.lng,
         dropLatitude:    dropCoords.lat,   dropLongitude:   dropCoords.lng,
         serviceType,
+        vehicleType: serviceType === 'OUTSTATION' ? vehicleType : null,
       });
       setFareDetails(res.data);
       setStep(3);
@@ -366,7 +368,10 @@ export default function GuestBooking() {
         serviceType,
         scheduledAt: journeyDate ? journeyDate + ':00' : null,
         distance: fareDetails.distance, duration: fareDetails.duration, totalFare: fareDetails.totalFare,
-        notes: returnDate ? `Return date: ${returnDate}` : '',
+        notes: [
+          returnDate ? `Return date: ${returnDate}` : '',
+          serviceType === 'OUTSTATION' ? `Vehicle: ${vehicleType}` : '',
+        ].filter(Boolean).join(' | '),
         firebaseIdToken,
       });
       setPaymentOrder(res.data.paymentOrder);
@@ -585,6 +590,30 @@ export default function GuestBooking() {
                     <div className="gb-input-icon">
                       <i className="fas fa-calendar-check" />
                       <input type="datetime-local" value={returnDate} onChange={e => setReturnDate(e.target.value)} min={journeyDate || minDate} />
+                    </div>
+                  </div>
+                )}
+                {serviceType === 'OUTSTATION' && (
+                  <div className="gb-field">
+                    <label>Vehicle Type *</label>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {[
+                        { v: 'SEDAN', label: 'Sedan', icon: 'fas fa-car',         rate: '₹1500/day + ₹11/km' },
+                        { v: 'SUV',   label: 'SUV',   icon: 'fas fa-shuttle-van',  rate: '₹2000/day + ₹14/km' },
+                      ].map(o => (
+                        <button type="button" key={o.v} onClick={() => setVehicleType(o.v)}
+                          style={{
+                            flex: 1, padding: '12px 10px', borderRadius: 10, cursor: 'pointer',
+                            border: vehicleType === o.v ? '2px solid #134e4a' : '1.5px solid #e2e8f0',
+                            background: vehicleType === o.v ? '#f0fdfa' : '#fff',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                            fontWeight: 600, color: '#1e293b',
+                          }}>
+                          <i className={o.icon} style={{ fontSize: '1.3rem', color: '#134e4a' }} />
+                          {o.label}
+                          <span style={{ fontSize: '.72rem', color: '#64748b', fontWeight: 500 }}>{o.rate}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}

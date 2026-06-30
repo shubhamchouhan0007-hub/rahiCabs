@@ -41,13 +41,29 @@ public class FareCalculationService {
             duration = (int) Math.ceil((distance / 40.0) * 60);
         }
 
-        // Double distance for round trip
-        if ("ROUND_TRIP".equals(request.getServiceType())) {
-            distance = distance * 2;
-            duration = duration * 2;
+        // Per-category pricing
+        String serviceType = request.getServiceType() == null ? "" : request.getServiceType();
+        double totalFare;
+        switch (serviceType) {
+            case "ROUND_TRIP":
+                distance = distance * 2;   // there & back
+                duration = duration * 2;
+                totalFare = slabFare(distance) + SERVICE_GST;
+                break;
+            case "ONE_WAY":
+                totalFare = slabFare(distance) + SERVICE_GST;
+                break;
+            case "OUTSTATION": {
+                boolean suv  = "SUV".equalsIgnoreCase(request.getVehicleType());
+                double  base = suv ? 2000.0 : 1500.0;   // per 24 hr
+                double  perKm = suv ? 14.0  : 11.0;
+                totalFare = base + perKm * distance;
+                break;
+            }
+            default:   // CITY_TAXI, HOURLY_RENTAL, AIRPORT_TRANSFER — flat rate (to be finalised)
+                totalFare = Math.max(minimumFare, distance * farePerKm);
         }
 
-        double totalFare     = Math.max(minimumFare, distance * farePerKm);
         double advanceAmount = totalFare * (advancePct / 100.0);
         double remaining     = totalFare - advanceAmount;
 
@@ -58,6 +74,16 @@ public class FareCalculationService {
                 .advanceAmount(Math.round(advanceAmount * 100.0) / 100.0)
                 .remainingAmount(Math.round(remaining * 100.0) / 100.0)
                 .build();
+    }
+
+    /** Fixed service charge + GST added to one-way and round-trip fares. */
+    private static final double SERVICE_GST = 148.0;
+
+    /** Slab pricing: ₹12/km up to 100 km, ₹11/km for 100–200 km, ₹10/km beyond 200 km. */
+    private double slabFare(double km) {
+        if (km <= 100) return km * 12.0;
+        if (km <= 200) return 100 * 12.0 + (km - 100) * 11.0;
+        return 100 * 12.0 + 100 * 11.0 + (km - 200) * 10.0;
     }
 
     private boolean isGoogleConfigured() {

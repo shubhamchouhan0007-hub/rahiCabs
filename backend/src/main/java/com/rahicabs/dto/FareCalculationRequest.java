@@ -17,5 +17,6 @@ public class FareCalculationRequest {
     @NotNull(message = "Drop longitude is required")
     private Double dropLongitude;
 
-    private String serviceType; // optional — used to double distance for ROUND_TRIP
+    private String serviceType; // ONE_WAY, ROUND_TRIP, OUTSTATION, etc.
+    private String vehicleType; // SEDAN or SUV — used for OUTSTATION pricing
 }

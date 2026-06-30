@@ -274,7 +274,7 @@ export default function Home() {
           <div className="h-hero-visual">
             <div className="h-float-cards">
               <div className="h-float-card h-card-1"><i className="fas fa-shield-alt" /><span>100% Verified Drivers</span></div>
-              <div className="h-float-card h-card-2"><i className="fas fa-map-marker-alt" /><span>Live Tracking</span></div>
+              <div className="h-float-card h-card-2"><i className="fas fa-map-marker-alt" /><span>Doorstep Pickup</span></div>
               <div className="h-float-card h-card-3"><i className="fas fa-rupee-sign" /><span>Transparent Pricing</span></div>
             </div>
             <div className="h-hero-circle">
@@ -639,7 +639,7 @@ export default function Home() {
               <textarea rows="4" placeholder="Your Message" required
                 value={contactForm.message} onChange={e => setContactForm({...contactForm, message:e.target.value})} />
               <button type="submit" className="h-btn h-btn-primary h-btn-full" disabled={contactLoading}>
-                {contactLoading ? <><i className="fas fa-spinner fa-spin" /> Sending…</> : <><i className="fas fa-paper-plane" /> Send Message</>}
+                {contactLoading ? <><i className="fas fa-spinner fa-spin" /> Sending…</> : <><i className="fas fa-paper-plane" /> Enquire Now</>}
               </button>
             </form>
           </div>
