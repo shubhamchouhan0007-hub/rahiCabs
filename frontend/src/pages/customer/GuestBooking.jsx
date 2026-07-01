@@ -48,6 +48,9 @@ export default function GuestBooking() {
   const [pickupSugs, setPickupSugs]     = useState([]);
   const [dropSugs, setDropSugs]         = useState([]);
   const [nearbyAirports, setNearbyAirports] = useState([]);
+  const [currentCoords, setCurrentCoords]   = useState(null);   // GPS, for airport transfer
+  const [selectedAirport, setSelectedAirport] = useState(null); // chosen destination airport
+  const airportAutofilled = useRef(false);
   const [sugLoading, setSugLoading]     = useState(false);
   const skipPickupSearch = useRef(false);
   const skipDropSearch   = useRef(false);
@@ -139,17 +142,19 @@ export default function GuestBooking() {
     } catch { setNearbyAirports([]); }
   }, [ensureApi]);
 
-  const setAirportDrop = (name, lat, lng) => {
-    skipDropSearch.current = true;
-    setDropVal(name); setDropLocation(name); setDropCoords({ lat, lng });
-    setDropSugs([]);
-    if (gMapRef.current) gMapRef.current.panTo({ lat, lng });
-  };
+  const chooseAirport = (name, lat, lng) => setSelectedAirport({ name, lat, lng });
 
+  // Airport Transfer: ask for GPS once, then find the 3 nearest airports to the user
   useEffect(() => {
-    if (serviceType === 'AIRPORT_TRANSFER' && pickupCoords) findNearestAirports(pickupCoords);
-    else setNearbyAirports([]);
-  }, [serviceType, pickupCoords, findNearestAirports]);
+    if (serviceType !== 'AIRPORT_TRANSFER') { setNearbyAirports([]); return; }
+    if (currentCoords) { findNearestAirports(currentCoords); return; }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => setCurrentCoords({ lat: coords.latitude, lng: coords.longitude }),
+        () => setNearbyAirports([])   // denied → popular-airports fallback shows
+      );
+    }
+  }, [serviceType, currentCoords, findNearestAirports]);
 
   /* ── Init Google Map when the Location step renders ─── */
   useEffect(() => {
@@ -260,6 +265,18 @@ export default function GuestBooking() {
       () => { setLocateError('Location denied — allow in browser settings or search manually.'); setLocating(false); }
     );
   };
+
+  // On the Location step, auto-fill pickup (current GPS) + drop (chosen airport) if one was picked
+  useEffect(() => {
+    if (step === 1) { airportAutofilled.current = false; return; }
+    if (step === 2 && serviceType === 'AIRPORT_TRANSFER' && selectedAirport && !airportAutofilled.current) {
+      airportAutofilled.current = true;
+      skipDropSearch.current = true;
+      setDropVal(selectedAirport.name); setDropLocation(selectedAirport.name);
+      setDropCoords({ lat: selectedAirport.lat, lng: selectedAirport.lng });
+      if (currentCoords) reverseGeocode(currentCoords.lat, currentCoords.lng, true);
+    }
+  }, [step, serviceType, selectedAirport, currentCoords, reverseGeocode]);
 
   /* ── Place search (Google Places Autocomplete) ─ */
   const searchPlace = useCallback(async (query, type) => {
@@ -559,34 +576,6 @@ export default function GuestBooking() {
                   )}
                 </div>
               </div>
-              {serviceType === 'AIRPORT_TRANSFER' && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#0f766e', marginBottom: 7 }}>
-                    <i className="fas fa-plane-departure" /> {nearbyAirports.length > 0 ? 'Nearest airports to your pickup' : 'Popular airports'} — tap to set as your drop
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {(nearbyAirports.length > 0
-                      ? nearbyAirports.map(a => ({ name: a.name, lat: a.geometry.location.lat(), lng: a.geometry.location.lng() }))
-                      : POPULAR_AIRPORTS
-                    ).map((a, i) => {
-                      const selected = dropLocation === a.name;
-                      return (
-                        <button type="button" key={i} onClick={() => setAirportDrop(a.name, a.lat, a.lng)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px',
-                            border: selected ? '2px solid #134e4a' : '1.5px solid #99f6e4',
-                            background: selected ? '#134e4a' : '#f0fdfa',
-                            color: selected ? '#fff' : '#134e4a',
-                            borderRadius: 100, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer',
-                          }}>
-                          <i className="fas fa-plane" style={{ fontSize: '.72rem' }} />
-                          {a.name}{selected && <i className="fas fa-check" style={{ marginLeft: 2 }} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Google Map */}
@@ -635,6 +624,38 @@ export default function GuestBooking() {
                 </div>
               ))}
             </div>
+
+            {serviceType === 'AIRPORT_TRANSFER' && (
+              <div className="gb-details-section">
+                <h3 className="gb-section-title"><i className="fas fa-plane-departure" /> Destination Airport</h3>
+                <p style={{ fontSize: '.82rem', color: '#64748b', margin: '0 0 10px' }}>
+                  {nearbyAirports.length > 0
+                    ? 'Nearest airports to your current location — tap to pick your destination.'
+                    : 'Popular airports — or allow location access for the nearest ones. You can also skip and enter drop manually next.'}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {(nearbyAirports.length > 0
+                    ? nearbyAirports.map(a => ({ name: a.name, lat: a.geometry.location.lat(), lng: a.geometry.location.lng() }))
+                    : POPULAR_AIRPORTS
+                  ).map((a, i) => {
+                    const selected = selectedAirport?.name === a.name;
+                    return (
+                      <button type="button" key={i} onClick={() => chooseAirport(a.name, a.lat, a.lng)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+                          border: selected ? '2px solid #134e4a' : '1.5px solid #99f6e4',
+                          background: selected ? '#134e4a' : '#f0fdfa',
+                          color: selected ? '#fff' : '#134e4a',
+                          borderRadius: 10, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
+                        }}>
+                        <i className="fas fa-plane" /> {a.name}
+                        {selected && <i className="fas fa-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Personal details */}
             <div className="gb-details-section">
