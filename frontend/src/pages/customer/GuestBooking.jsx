@@ -20,6 +20,17 @@ const SERVICES = [
 
 const STEPS = ['Service', 'Location', 'Verify', 'Payment'];
 
+// Hourly rental packages (hours / km)
+const RENTAL_PACKAGES = [
+  { h: 3, k: 50 }, { h: 6, k: 50 }, { h: 6, k: 100 }, { h: 9, k: 150 },
+  { h: 12, k: 150 }, { h: 12, k: 200 }, { h: 15, k: 200 }, { h: 15, k: 250 },
+  { h: 15, k: 300 }, { h: 18, k: 300 }, { h: 21, k: 350 },
+  { h: 24, k: 300 }, { h: 24, k: 350 }, { h: 24, k: 400 },
+];
+const RENTAL_MOST_USED = [
+  { h: 3, k: 50 }, { h: 6, k: 100 }, { h: 9, k: 150 }, { h: 12, k: 150 }, { h: 24, k: 350 },
+];
+
 // Fallback airports shown for Airport Transfer before a pickup is set
 const POPULAR_AIRPORTS = [
   { name: 'Jay Prakash Narayan Airport, Patna', lat: 25.5913, lng: 85.0880 },
@@ -79,7 +90,8 @@ export default function GuestBooking() {
   const [email, setEmail]             = useState('');
   const [journeyDate, setJourneyDate] = useState('');
   const [returnDate, setReturnDate]   = useState('');
-  const [vehicleType, setVehicleType] = useState('SEDAN');  // for OUTSTATION pricing
+  const [vehicleType, setVehicleType] = useState('SEDAN');  // OUTSTATION / HOURLY_RENTAL
+  const [rentalPackage, setRentalPackage] = useState({ h: 3, k: 50 });  // HOURLY_RENTAL
 
   /* ── Step 3: Phone + OTP ───────────────── */
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -355,14 +367,19 @@ export default function GuestBooking() {
 
   // Step 2 (Location) → Step 3 (Verify) — calculate the fare here (service + location both known now)
   const goToVerify = async () => {
-    if (!pickupCoords || !dropCoords) { setError('Please set both pickup and drop locations'); return; }
+    const isHourly = serviceType === 'HOURLY_RENTAL';
+    if (!pickupCoords) { setError('Please set your pickup location'); return; }
+    if (!isHourly && !dropCoords) { setError('Please set both pickup and drop locations'); return; }
     setLoading(true); setError('');
     try {
+      const drop = dropCoords || pickupCoords;  // hourly rental has no drop
       const res = await customerApi.calculateFare({
         pickupLatitude:  pickupCoords.lat, pickupLongitude: pickupCoords.lng,
-        dropLatitude:    dropCoords.lat,   dropLongitude:   dropCoords.lng,
+        dropLatitude:    drop.lat,         dropLongitude:   drop.lng,
         serviceType,
-        vehicleType: serviceType === 'OUTSTATION' ? vehicleType : null,
+        vehicleType: (serviceType === 'OUTSTATION' || isHourly) ? vehicleType : null,
+        rentalHours: isHourly ? rentalPackage.h : null,
+        rentalKm:    isHourly ? rentalPackage.k : null,
       });
       setFareDetails(res.data);
       setStep(3);
@@ -424,16 +441,19 @@ export default function GuestBooking() {
       const result = await confirmationRef.current.confirm(otpStr);
       const firebaseIdToken = await result.user.getIdToken();
 
+      const isHourly = serviceType === 'HOURLY_RENTAL';
+      const drop = dropCoords || pickupCoords;  // hourly rental has no separate drop
       const res = await customerApi.createBooking({
         name, phoneNumber, email,
         pickupLocation, pickupLatitude: pickupCoords.lat, pickupLongitude: pickupCoords.lng,
-        dropLocation,   dropLatitude:   dropCoords.lat,   dropLongitude:   dropCoords.lng,
+        dropLocation: dropLocation || pickupLocation, dropLatitude: drop.lat, dropLongitude: drop.lng,
         serviceType,
         scheduledAt: journeyDate ? journeyDate + ':00' : null,
         distance: fareDetails.distance, duration: fareDetails.duration, totalFare: fareDetails.totalFare,
         notes: [
           returnDate ? `Return date: ${returnDate}` : '',
           serviceType === 'OUTSTATION' ? `Vehicle: ${vehicleType}` : '',
+          isHourly ? `Rental: ${vehicleType} ${rentalPackage.h}hr/${rentalPackage.k}km` : '',
         ].filter(Boolean).join(' | '),
         firebaseIdToken,
       });
@@ -548,6 +568,7 @@ export default function GuestBooking() {
                 </div>
               </div>
 
+              {serviceType !== 'HOURLY_RENTAL' && (<>
               <div className="gb-route-dashes" />
 
               <div className="gb-route-row">
@@ -576,6 +597,7 @@ export default function GuestBooking() {
                   )}
                 </div>
               </div>
+              </>)}
             </div>
 
             {/* Google Map */}
@@ -584,9 +606,11 @@ export default function GuestBooking() {
                 <button className={`gb-toggle-btn${selectingPickup ? ' active' : ''}`} onClick={() => setSelectingPickup(true)}>
                   <i className="fas fa-circle" /> Pin Pickup
                 </button>
-                <button className={`gb-toggle-btn${!selectingPickup ? ' active drop' : ''}`} onClick={() => setSelectingPickup(false)}>
-                  <i className="fas fa-map-marker-alt" /> Pin Drop
-                </button>
+                {serviceType !== 'HOURLY_RENTAL' && (
+                  <button className={`gb-toggle-btn${!selectingPickup ? ' active drop' : ''}`} onClick={() => setSelectingPickup(false)}>
+                    <i className="fas fa-map-marker-alt" /> Pin Drop
+                  </button>
+                )}
               </div>
               <div ref={mapDivRef} style={{ height: '240px', width: '100%', borderRadius: '8px' }} />
               <p className="gb-map-hint"><i className="fas fa-hand-pointer" /> Tap map to pin location</p>
@@ -594,7 +618,7 @@ export default function GuestBooking() {
 
             <div className="gb-btn-row">
               <button className="gb-btn-back" onClick={() => setStep(1)}><i className="fas fa-arrow-left" /> Back</button>
-              <button className="gb-btn-primary gb-btn-grow" onClick={goToVerify} disabled={loading || !pickupCoords || !dropCoords}>
+              <button className="gb-btn-primary gb-btn-grow" onClick={goToVerify} disabled={loading || !pickupCoords || (serviceType !== 'HOURLY_RENTAL' && !dropCoords)}>
                 {loading ? <><i className="fas fa-spinner fa-spin" /> Calculating…</> : <><i className="fas fa-shield-alt" /> Verify Phone &amp; Continue</>}
               </button>
             </div>
@@ -713,6 +737,48 @@ export default function GuestBooking() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+                {serviceType === 'HOURLY_RENTAL' && (
+                  <div className="gb-field">
+                    <label>Vehicle Type *</label>
+                    <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+                      {['MINI', 'SEDAN', 'SUV'].map(v => (
+                        <button type="button" key={v} onClick={() => setVehicleType(v)}
+                          style={{ flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer',
+                            border: vehicleType === v ? '2px solid #134e4a' : '1.5px solid #e2e8f0',
+                            background: vehicleType === v ? '#f0fdfa' : '#fff', fontWeight: 600, color: '#1e293b' }}>
+                          {v.charAt(0) + v.slice(1).toLowerCase()}
+                        </button>
+                      ))}
+                    </div>
+                    <label>Package *</label>
+                    <div style={{ fontSize: '.75rem', fontWeight: 600, color: '#0f766e', margin: '4px 0 6px' }}>Most used</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      {RENTAL_MOST_USED.map((p, i) => {
+                        const sel = rentalPackage.h === p.h && rentalPackage.k === p.k;
+                        return (
+                          <button type="button" key={i} onClick={() => setRentalPackage({ h: p.h, k: p.k })}
+                            style={{ padding: '8px 14px', borderRadius: 100, cursor: 'pointer',
+                              border: sel ? '2px solid #134e4a' : '1.5px solid #99f6e4',
+                              background: sel ? '#134e4a' : '#f0fdfa', color: sel ? '#fff' : '#134e4a',
+                              fontSize: '.82rem', fontWeight: 600 }}>
+                            {p.h}hr / {p.k}km
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <select value={`${rentalPackage.h}-${rentalPackage.k}`}
+                      onChange={e => { const [h, k] = e.target.value.split('-').map(Number); setRentalPackage({ h, k }); }}
+                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8 }}>
+                      {RENTAL_PACKAGES.map((p, i) => (
+                        <option key={i} value={`${p.h}-${p.k}`}>{p.h} hr / {p.k} km</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: '.78rem', color: '#92400e', background: '#fffbeb',
+                      border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginTop: 12 }}>
+                      <i className="fas fa-info-circle" /> Hourly rentals are capped at 24 hours. If your trip exceeds 24 hours, it will be billed under Outstation rates.
+                    </p>
                   </div>
                 )}
               </div>

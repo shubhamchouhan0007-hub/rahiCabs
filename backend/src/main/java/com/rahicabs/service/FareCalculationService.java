@@ -24,6 +24,11 @@ public class FareCalculationService {
         double advancePct  = settings.getDouble("fare.advance_pct",  15.0);
         double minimumFare = settings.getDouble("fare.minimum",     150.0);
 
+        // Hourly rental is package-based (fixed hours + km), not distance-based
+        if ("HOURLY_RENTAL".equals(request.getServiceType())) {
+            return hourlyRentalFare(request, advancePct);
+        }
+
         double distance;
         int    duration;
 
@@ -79,8 +84,38 @@ public class FareCalculationService {
                 .build();
     }
 
-    /** Fixed service charge + GST added to one-way and round-trip fares. */
+    /** Fixed service charge + GST added to one-way, round-trip and hourly-rental fares. */
     private static final double SERVICE_GST = 148.0;
+
+    /**
+     * Hourly rental: time (per-minute under 12h, reduced hourly at 12h+) + fuel
+     * (tiered per-km) + flat service/GST. Vehicle: MINI / SEDAN / SUV.
+     */
+    private FareCalculationResponse hourlyRentalFare(FareCalculationRequest request, double advancePct) {
+        int hours = request.getRentalHours() != null ? request.getRentalHours() : 0;
+        int km    = request.getRentalKm()    != null ? request.getRentalKm()    : 0;
+        String v  = request.getVehicleType() == null ? "SEDAN" : request.getVehicleType().toUpperCase();
+
+        double perMin, reducedHourly, fuelBase;
+        switch (v) {
+            case "MINI": perMin = 1.5; reducedHourly = 80.0;  fuelBase = 11.0; break;
+            case "SUV":  perMin = 3.0; reducedHourly = 160.0; fuelBase = 14.0; break;
+            default:     perMin = 2.0; reducedHourly = 100.0; fuelBase = 12.0; // SEDAN
+        }
+
+        double time     = hours >= 12 ? hours * reducedHourly : hours * 60 * perMin;
+        double fuelRate = km < 200 ? fuelBase : (km <= 250 ? fuelBase - 1 : fuelBase - 2);
+        double total    = time + km * fuelRate + SERVICE_GST;
+
+        double advance = total * (advancePct / 100.0);
+        return FareCalculationResponse.builder()
+                .distance((double) km)
+                .duration(hours * 60)
+                .totalFare(Math.round(total * 100.0) / 100.0)
+                .advanceAmount(Math.round(advance * 100.0) / 100.0)
+                .remainingAmount(Math.round((total - advance) * 100.0) / 100.0)
+                .build();
+    }
 
     /** Slab pricing: ₹12/km up to 100 km, ₹11/km for 100–200 km, ₹10/km beyond 200 km. */
     private double slabFare(double km) {
