@@ -71,6 +71,40 @@ public class CustomerService {
         );
     }
 
+    /**
+     * Log a customer in after their phone has already been verified by Firebase
+     * (OTP done client-side). Creates the account on first login.
+     */
+    @Transactional
+    public CustomerJwtResponse loginWithFirebase(String phoneNumber) {
+        Customer customer = customerRepository.findByPhoneNumber(phoneNumber).orElse(null);
+        boolean isNewUser = false;
+
+        if (customer == null) {
+            customer = Customer.builder()
+                    .phoneNumber(phoneNumber)
+                    .fullName("Customer")
+                    .authType(AuthType.OTP)
+                    .accountStatus(AccountStatus.ACTIVE)
+                    .build();
+            customerRepository.save(customer);
+            isNewUser = true;
+        }
+
+        customer.setLastLogin(LocalDateTime.now());
+        customerRepository.save(customer);
+
+        String token = jwtTokenProvider.generateCustomerToken(customer);
+        return new CustomerJwtResponse(
+                token,
+                customer.getId(),
+                customer.getFullName(),
+                customer.getPhoneNumber(),
+                customer.getEmail(),
+                isNewUser
+        );
+    }
+
     @Transactional
     public Customer getOrCreateCustomer(String phoneNumber, String fullName, String email) {
         Customer customer = customerRepository.findByPhoneNumber(phoneNumber).orElse(null);

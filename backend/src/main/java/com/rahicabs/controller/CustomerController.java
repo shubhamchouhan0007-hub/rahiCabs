@@ -50,6 +50,18 @@ public class CustomerController {
         return ResponseEntity.ok(customerService.loginWithOtp(request.getPhoneNumber(), request.getOtp()));
     }
 
+    /** Log in after the phone is verified client-side by Firebase (no DLT SMS needed). */
+    @PostMapping("/firebase-login")
+    public ResponseEntity<?> firebaseLogin(@RequestBody Map<String, String> body) {
+        String phone;
+        try {
+            phone = firebaseService.verifyAndGetPhone(body.get("firebaseIdToken"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Phone verification failed. Please try again."));
+        }
+        return ResponseEntity.ok(customerService.loginWithFirebase(phone));
+    }
+
     // ========== Fare Calculation ==========
 
     @PostMapping("/calculate-fare")

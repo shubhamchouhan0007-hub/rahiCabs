@@ -10,8 +10,12 @@ const customerApi = {
   verifyOtp: (phoneNumber, otp) => 
     axios.post(`${API_URL}/customer/verify-otp`, { phoneNumber, otp }),
 
-  loginWithOtp: (phoneNumber, otp) => 
+  loginWithOtp: (phoneNumber, otp) =>
     axios.post(`${API_URL}/customer/login`, { phoneNumber, otp }),
+
+  // Firebase phone-auth login (OTP verified client-side, no DLT SMS)
+  loginWithFirebase: (firebaseIdToken) =>
+    axios.post(`${API_URL}/customer/firebase-login`, { firebaseIdToken }),
 
   // Fare Calculation
   calculateFare: (data) => 

@@ -32,12 +32,17 @@ export default function Login() {
   const resetConfirmRef   = useRef(null)
   const resetTokenRef     = useRef(null)
 
+  // Customer login (Firebase phone OTP) state
+  const custRecaptchaRef = useRef(null)
+  const custConfirmRef   = useRef(null)
+
   useEffect(() => () => clearInterval(timerRef.current), [])
 
   const switchMode = m => {
     setMode(m); setError(''); setNotice(''); setOtpSent(false)
     setPhone(''); setOtp(''); setForm({ email:'', password:'' })
     setResetStep(1); setNewPassword(''); resetConfirmRef.current = null
+    custConfirmRef.current = null
     clearInterval(timerRef.current); setCountdown(0)
   }
 
@@ -105,25 +110,35 @@ export default function Login() {
   }
 
   const sendOtp = async e => {
-    e?.preventDefault(); setError(''); setLoading(true)
-    if (!phone || phone.length !== 10) { setError('Enter a valid 10-digit phone number.'); setLoading(false); return }
+    e?.preventDefault(); setError('')
+    if (!phone || phone.length !== 10) { setError('Enter a valid 10-digit phone number.'); return }
+    setLoading(true)
     try {
-      await customerApi.sendOtp(phone)
-      setOtpSent(true); startCountdown()
+      if (!custRecaptchaRef.current)
+        custRecaptchaRef.current = new RecaptchaVerifier(auth, 'customer-recaptcha', { size: 'invisible' })
+      custConfirmRef.current = await signInWithPhoneNumber(auth, '+91' + phone, custRecaptchaRef.current)
+      setOtp(''); setOtpSent(true); startCountdown()
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP.')
+      try { custRecaptchaRef.current?.clear() } catch {}
+      custRecaptchaRef.current = null
+      setError(err?.code === 'auth/too-many-requests' ? 'Too many attempts. Please try later.' : 'Failed to send OTP.')
     } finally { setLoading(false) }
   }
 
   const verifyOtp = async e => {
-    e.preventDefault(); setError(''); setLoading(true)
-    if (!otp || otp.length !== 6) { setError('Enter a valid 6-digit OTP.'); setLoading(false); return }
+    e.preventDefault(); setError('')
+    if (!otp || otp.length !== 6) { setError('Enter a valid 6-digit OTP.'); return }
+    setLoading(true)
     try {
-      const res = await customerApi.loginWithOtp(phone, otp)
+      const result = await custConfirmRef.current.confirm(otp)
+      const firebaseIdToken = await result.user.getIdToken()
+      const res = await customerApi.loginWithFirebase(firebaseIdToken)
       custLogin(res.data)
       navigate('/customer/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid OTP.')
+      if (err?.code === 'auth/invalid-verification-code') setError('Incorrect OTP. Please check and try again.')
+      else if (err?.code === 'auth/code-expired') setError('OTP expired. Please request a new one.')
+      else setError(err.response?.data?.message || 'Invalid OTP.')
     } finally { setLoading(false) }
   }
 
@@ -304,6 +319,7 @@ export default function Login() {
                   <i className="fas fa-key" /> Partner Login
                 </button>
               </div>
+              <div id="customer-recaptcha" />
             </>
           )}
 
