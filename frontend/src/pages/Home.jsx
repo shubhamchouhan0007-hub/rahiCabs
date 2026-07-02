@@ -607,21 +607,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA BANNER */}
-      <section className="h-cta-banner">
-        <div className="h-cta-shape" />
-        <div className="h-container h-cta-content reveal">
-          <div>
-            <h2>Ready for a <span className="h-gradient-text-light">Premium Ride</span>?</h2>
-            <p>Book your cab now and experience the RahiCab difference. Available 24/7, across Bihar.</p>
-          </div>
-          <div className="h-cta-actions">
-            <Link to="/register" className="h-btn h-btn-white h-btn-lg"><i className="fas fa-user-plus" /> Get Started</Link>
-            <Link to="/login" className="h-btn h-btn-outline-white h-btn-lg"><i className="fas fa-sign-in-alt" /> Login</Link>
-          </div>
-        </div>
-      </section>
-
       {/* CONTACT */}
       <section className="h-section h-contact" id="contact">
         <div className="h-container h-contact-container">
