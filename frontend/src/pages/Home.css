@@ -70,8 +70,8 @@
 .h-btn-white:hover { transform: translateY(-2px); }
 .h-btn-outline-white { background: transparent; border-color: rgba(255,255,255,.6); color: #fff; }
 .h-btn-outline-white:hover { background: rgba(255,255,255,.1); border-color: #fff; transform: translateY(-2px); }
-.h-btn-ghost { color: rgba(255,255,255,.85); font-size: .9rem; font-weight: 600; padding: 8px 16px; border-radius: 8px; transition: color .2s; text-decoration: none; }
-.h-btn-ghost:hover { color: #fff; }
+.h-btn-ghost { color: #fff; font-size: .9rem; font-weight: 600; padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,.4); background: transparent; cursor: pointer; transition: background .2s, border-color .2s; text-decoration: none; }
+.h-btn-ghost:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.7); }
 
 /* ============ NAVBAR ============ */
 .h-navbar {
