@@ -6,6 +6,7 @@ import { loadGoogleMaps } from '../utils/loadGoogleMaps'
 import './Home.css'
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
+const API = import.meta.env.VITE_API_URL || '/api'   // absolute in prod, proxied in dev
 
 const SERVICE_TYPES = ['ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION']
 const SERVICE_LABELS = { CITY_TAXI:'City Taxi', ONE_WAY:'One Way', HOURLY_RENTAL:'Hourly Rental', ROUND_TRIP:'Round Trip', AIRPORT_TRANSFER:'Airport Transfer', OUTSTATION:'Outstation' }
@@ -27,7 +28,7 @@ export default function Home() {
     e.preventDefault()
     setContactLoading(true); setContactStatus(null)
     try {
-      await axios.post('/api/public/contact', contactForm)
+      await axios.post(`${API}/public/contact`, contactForm)
       setContactStatus({ type:'success', msg:"Message sent! We'll get back to you soon." })
       setContactForm({ name:'', phone:'', email:'', message:'' })
     } catch {
@@ -132,7 +133,7 @@ export default function Home() {
     setBookLoading(true); setBookStatus(null)
     try {
       const payload = { ...bookForm, scheduledAt: bookForm.scheduledAt ? bookForm.scheduledAt + ':00' : null, fare: fareEst ? fareEst.fare : null }
-      const res = await axios.post('/api/public/bookings', payload)
+      const res = await axios.post(`${API}/public/bookings`, payload)
       setBookStatus({ type:'success', msg:`Booking confirmed! Your Booking ID is #${res.data.id}. Save your phone number to track it.`, bookingId: res.data.id })
       setBookForm({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'ONE_WAY', scheduledAt:'', notes:'' })
     } catch {
@@ -150,7 +151,7 @@ export default function Home() {
     e.preventDefault()
     setCheckLoading(true); setCheckError(null); setCheckResults(null)
     try {
-      const res = await axios.get(`/api/public/bookings/check?phone=${encodeURIComponent(checkPhone.trim())}`)
+      const res = await axios.get(`${API}/public/bookings/check?phone=${encodeURIComponent(checkPhone.trim())}`)
       setCheckResults(res.data)
       if (res.data.length === 0) setCheckError('No bookings found for this phone number.')
     } catch {
