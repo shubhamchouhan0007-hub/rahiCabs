@@ -190,7 +190,7 @@
 
 .detail-row i {
   width: 20px;
-  color: #667eea;
+  color: #0f766e;
 }
 
 .detail-row strong {
@@ -275,7 +275,7 @@
 
 .input-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0f766e;
 }
 
 .button-group {

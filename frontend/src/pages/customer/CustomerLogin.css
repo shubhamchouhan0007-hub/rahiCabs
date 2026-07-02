@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
   padding: 20px;
 }
 
@@ -76,7 +76,7 @@
 
 .login-form input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0f766e;
 }
 
 .otp-input {
@@ -99,7 +99,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #134e4a 0%, #0f766e 100%);
   color: white;
 }
 
@@ -124,7 +124,7 @@
 
 .btn-link {
   background: transparent;
-  color: #667eea;
+  color: #0f766e;
   padding: 8px;
   font-size: 14px;
 }
