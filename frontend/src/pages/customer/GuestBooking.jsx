@@ -484,7 +484,7 @@ export default function GuestBooking() {
         } catch { setError('Payment verification failed. Contact support.'); }
       },
       prefill: { name, email, contact: phoneNumber },
-      theme: { color: '#f97316' },
+      theme: { color: '#134e4a' },
     };
     new window.Razorpay(options).open();
   };
@@ -850,7 +850,7 @@ export default function GuestBooking() {
                   ))}
                 </div>
                 <button className="gb-btn-primary" onClick={verifyAndBook} disabled={loading || otp.join('').length !== 6}>
-                  {loading ? <><i className="fas fa-spinner fa-spin" /> Verifying...</> : <><i className="fas fa-check-circle" /> Confirm Booking</>}
+                  {loading ? <><i className="fas fa-spinner fa-spin" /> Verifying...</> : <><i className="fas fa-arrow-right" /> Continue Booking</>}
                 </button>
                 <button className="gb-btn-ghost" onClick={sendOtp} disabled={loading || countdown > 0}>
                   {countdown > 0 ? `Resend in ${countdown}s` : <><i className="fas fa-redo" /> Resend OTP</>}
