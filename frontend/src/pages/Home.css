@@ -95,6 +95,10 @@
 .h-nav-links a:hover { color: #fff; }
 .h-nav-links a:hover::after { transform: scaleX(1); }
 .h-nav-auth { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+.h-profile-chip { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); color: #fff; font-size: .9rem; font-weight: 600; padding: 8px 16px; border-radius: 100px; text-decoration: none; transition: background .2s; }
+.h-profile-chip:hover { background: rgba(255,255,255,.24); color: #fff; }
+.h-profile-chip i { color: #ffc34d; }
+.h-nav-mobile-auth { display: none; }  /* shown only on mobile via media query */
 .h-nav-cta { padding: 10px 20px; font-size: .88rem; }
 .h-hamburger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
 .h-hamburger span { display: block; width: 24px; height: 2px; background: #fff; border-radius: 2px; transition: all .3s; }
@@ -357,6 +361,13 @@
   .h-footer-inner   { flex-direction: column; text-align: center; }
   .h-nav-links, .h-nav-auth { display: none; }
   .h-hamburger { display: flex; }
+  .h-nav-mobile-auth {
+    display: inline-flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 12px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+    color: #fff; font-size: .82rem; font-weight: 600; padding: 7px 13px; border-radius: 100px;
+    text-decoration: none; white-space: nowrap;
+  }
+  .h-nav-mobile-auth i { color: #ffc34d; }
   .h-nav-links.open {
     display: flex; flex-direction: column; gap: 0;
     position: absolute; top: 100%; left: 0; right: 0;

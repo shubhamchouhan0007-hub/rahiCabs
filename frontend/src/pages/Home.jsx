@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useAuth } from '../context/AuthContext'
+import { useCustomer } from '../context/CustomerContext'
 import { fmtDateTime } from '../utils/format'
 import { loadGoogleMaps } from '../utils/loadGoogleMaps'
 import './Home.css'
@@ -13,6 +15,16 @@ const SERVICE_LABELS = { CITY_TAXI:'City Taxi', ONE_WAY:'One Way', HOURLY_RENTAL
 const STATUS_COLOR   = { PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
 
 export default function Home() {
+  const navigate = useNavigate()
+  const { user: staffUser, logout: logoutStaff } = useAuth()
+  const { customer, logout: logoutCustomer }      = useCustomer()
+
+  // Unified auth view for the navbar
+  const dashPath    = staffUser ? (staffUser.role === 'ADMIN' ? '/admin' : staffUser.role === 'DRIVER' ? '/driver' : '/client') : '/customer/dashboard'
+  const loggedIn    = !!staffUser || !!customer
+  const displayName = (staffUser?.name || customer?.fullName || 'Account').split(' ')[0]
+  const doLogout    = () => { if (staffUser) logoutStaff(); if (customer) logoutCustomer?.(); navigate('/') }
+
   const [scrolled, setScrolled]       = useState(false)
   const [menuOpen, setMenuOpen]       = useState(false)
   const [testiIdx, setTestiIdx]       = useState(0)
@@ -234,10 +246,24 @@ export default function Home() {
             <li><a href="#contact"      onClick={() => setMenuOpen(false)}>Contact</a></li>
           </ul>
           <div className="h-nav-auth">
-            <Link to="/login" className="h-btn-ghost">Login / Signup</Link>
-            <Link to="/login" className="h-btn-ghost">My Bookings</Link>
+            {loggedIn ? (
+              <>
+                <Link to={dashPath} className="h-profile-chip"><i className="fas fa-user-circle" /> {displayName}</Link>
+                <button onClick={doLogout} className="h-btn-ghost">Logout</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="h-btn-ghost">Login / Signup</Link>
+                <Link to="/login" className="h-btn-ghost">My Bookings</Link>
+              </>
+            )}
             <Link to="/book" className="h-btn h-btn-primary h-nav-cta"><i className="fas fa-taxi" /> Book Now</Link>
           </div>
+          {/* Mobile-only compact auth (top-right, opposite the logo) */}
+          <Link to={loggedIn ? dashPath : '/login'} className="h-nav-mobile-auth" aria-label={loggedIn ? 'My account' : 'Login or sign up'}>
+            <i className={loggedIn ? 'fas fa-user-circle' : 'fas fa-sign-in-alt'} />
+            <span>{loggedIn ? displayName : 'Login / Signup'}</span>
+          </Link>
           <button className={`h-hamburger${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(m => !m)} aria-label="Menu">
             <span /><span /><span />
           </button>

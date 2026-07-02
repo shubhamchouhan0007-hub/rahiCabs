@@ -27,9 +27,15 @@ export const CustomerProvider = ({ children }) => {
           setCustomer(response.data);
           setToken(savedToken);
         } catch (error) {
-          console.error('Failed to load customer profile:', error);
-          localStorage.removeItem('customerToken');
-          setToken(null);
+          // Only log out if the token is genuinely invalid (401/403).
+          // Transient errors (network, 500, DB cold-start) keep the session.
+          const status = error?.response?.status;
+          if (status === 401 || status === 403) {
+            localStorage.removeItem('customerToken');
+            setToken(null);
+          } else {
+            setToken(savedToken);  // keep them logged in
+          }
         }
       }
       setLoading(false);
