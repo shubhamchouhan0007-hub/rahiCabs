@@ -266,6 +266,12 @@ tr:hover td { background: #f8f6f0; }
 .settings-section h3 { font-size: 1rem; font-weight: 700; margin: 0 0 4px; }
 .settings-desc { font-size: .85rem; color: var(--text-muted); margin: 0 0 20px; }
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+.settings-group-title {
+  font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--primary); margin: 26px 0 12px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-group-title:first-of-type { margin-top: 8px; }
 
 .setting-field { display: flex; flex-direction: column; gap: 5px; }
 .setting-field label { font-size: .8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }

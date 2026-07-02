@@ -522,11 +522,55 @@ function AdminSettings() {
         {tab === 'fare' && (
           <div className="settings-section">
             <h3>Fare &amp; Pricing</h3>
-            <p className="settings-desc">These rates apply to all bookings in real time.</p>
+            <p className="settings-desc">
+              These rates apply to all bookings in real time. Slab distance boundaries
+              (100/200&nbsp;km), airport bands and the 12-hour rental threshold are fixed in code —
+              only the rates below are editable.
+            </p>
+
+            <h4 className="settings-group-title">General</h4>
             <div className="settings-grid">
-              <SettingField label="Rate per km (₹)" type="number" value={settings['fare.per_km'] || ''} onChange={v => set('fare.per_km', v)} hint="e.g. 11" />
-              <SettingField label="Minimum Fare (₹)" type="number" value={settings['fare.minimum'] || ''} onChange={v => set('fare.minimum', v)} hint="e.g. 150" />
-              <SettingField label="Advance Payment (%)" type="number" value={settings['fare.advance_pct'] || ''} onChange={v => set('fare.advance_pct', v)} hint="e.g. 15" />
+              <SettingField label="Advance Payment (%)" type="number" value={settings['fare.advance_pct'] || ''} onChange={v => set('fare.advance_pct', v)} hint="Booking advance, e.g. 15" />
+              <SettingField label="Service Charge + GST (₹)" type="number" value={settings['fare.service_gst'] || ''} onChange={v => set('fare.service_gst', v)} hint="Flat, added to one-way / round-trip / hourly" />
+            </div>
+
+            <h4 className="settings-group-title">One-way &amp; Round-trip slabs (₹/km)</h4>
+            <div className="settings-grid">
+              <SettingField label="Slab 1 — up to 100 km" type="number" value={settings['fare.slab1'] || ''} onChange={v => set('fare.slab1', v)} hint="e.g. 12" />
+              <SettingField label="Slab 2 — 100–200 km" type="number" value={settings['fare.slab2'] || ''} onChange={v => set('fare.slab2', v)} hint="e.g. 11" />
+              <SettingField label="Slab 3 — beyond 200 km" type="number" value={settings['fare.slab3'] || ''} onChange={v => set('fare.slab3', v)} hint="e.g. 10" />
+            </div>
+
+            <h4 className="settings-group-title">Outstation</h4>
+            <div className="settings-grid">
+              <SettingField label="Sedan base (₹)" type="number" value={settings['fare.outstation.sedan_base'] || ''} onChange={v => set('fare.outstation.sedan_base', v)} hint="e.g. 1500" />
+              <SettingField label="Sedan per km (₹)" type="number" value={settings['fare.outstation.sedan_perkm'] || ''} onChange={v => set('fare.outstation.sedan_perkm', v)} hint="e.g. 11" />
+              <SettingField label="SUV base (₹)" type="number" value={settings['fare.outstation.suv_base'] || ''} onChange={v => set('fare.outstation.suv_base', v)} hint="e.g. 2000" />
+              <SettingField label="SUV per km (₹)" type="number" value={settings['fare.outstation.suv_perkm'] || ''} onChange={v => set('fare.outstation.suv_perkm', v)} hint="e.g. 14" />
+            </div>
+
+            <h4 className="settings-group-title">Hourly rental</h4>
+            <p className="settings-desc">Per-minute rate applies under 12 h; the reduced hourly rate applies at 12 h and above. Fuel is charged per km (auto-tiered: −₹1/km over 200 km, −₹2/km over 250 km).</p>
+            <div className="settings-grid">
+              <SettingField label="Mini — ₹/min" type="number" value={settings['fare.hourly.mini_permin'] || ''} onChange={v => set('fare.hourly.mini_permin', v)} hint="e.g. 1.5" />
+              <SettingField label="Mini — reduced ₹/hr (12h+)" type="number" value={settings['fare.hourly.mini_reducedhr'] || ''} onChange={v => set('fare.hourly.mini_reducedhr', v)} hint="e.g. 80" />
+              <SettingField label="Mini — fuel ₹/km" type="number" value={settings['fare.hourly.mini_fuel'] || ''} onChange={v => set('fare.hourly.mini_fuel', v)} hint="e.g. 11" />
+              <SettingField label="Sedan — ₹/min" type="number" value={settings['fare.hourly.sedan_permin'] || ''} onChange={v => set('fare.hourly.sedan_permin', v)} hint="e.g. 2" />
+              <SettingField label="Sedan — reduced ₹/hr (12h+)" type="number" value={settings['fare.hourly.sedan_reducedhr'] || ''} onChange={v => set('fare.hourly.sedan_reducedhr', v)} hint="e.g. 100" />
+              <SettingField label="Sedan — fuel ₹/km" type="number" value={settings['fare.hourly.sedan_fuel'] || ''} onChange={v => set('fare.hourly.sedan_fuel', v)} hint="e.g. 12" />
+              <SettingField label="SUV — ₹/min" type="number" value={settings['fare.hourly.suv_permin'] || ''} onChange={v => set('fare.hourly.suv_permin', v)} hint="e.g. 3" />
+              <SettingField label="SUV — reduced ₹/hr (12h+)" type="number" value={settings['fare.hourly.suv_reducedhr'] || ''} onChange={v => set('fare.hourly.suv_reducedhr', v)} hint="e.g. 160" />
+              <SettingField label="SUV — fuel ₹/km" type="number" value={settings['fare.hourly.suv_fuel'] || ''} onChange={v => set('fare.hourly.suv_fuel', v)} hint="e.g. 14" />
+            </div>
+
+            <h4 className="settings-group-title">Airport transfer bands (₹/km)</h4>
+            <div className="settings-grid">
+              <SettingField label="≤ 30 km" type="number" value={settings['fare.airport.b1'] || ''} onChange={v => set('fare.airport.b1', v)} hint="e.g. 33" />
+              <SettingField label="30–50 km" type="number" value={settings['fare.airport.b2'] || ''} onChange={v => set('fare.airport.b2', v)} hint="e.g. 30" />
+              <SettingField label="50–100 km" type="number" value={settings['fare.airport.b3'] || ''} onChange={v => set('fare.airport.b3', v)} hint="e.g. 27" />
+              <SettingField label="100–150 km" type="number" value={settings['fare.airport.b4'] || ''} onChange={v => set('fare.airport.b4', v)} hint="e.g. 24" />
+              <SettingField label="150–200 km" type="number" value={settings['fare.airport.b5'] || ''} onChange={v => set('fare.airport.b5', v)} hint="e.g. 22" />
+              <SettingField label="200 km +" type="number" value={settings['fare.airport.b6'] || ''} onChange={v => set('fare.airport.b6', v)} hint="e.g. 20" />
             </div>
           </div>
         )}

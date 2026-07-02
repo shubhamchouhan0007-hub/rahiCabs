@@ -53,18 +53,20 @@ public class FareCalculationService {
             case "ROUND_TRIP":
                 distance = distance * 2;   // there & back
                 duration = duration * 2;
-                totalFare = slabFare(distance) + SERVICE_GST;
+                totalFare = slabFare(distance) + serviceGst();
                 break;
             case "ONE_WAY":
-                totalFare = slabFare(distance) + SERVICE_GST;
+                totalFare = slabFare(distance) + serviceGst();
                 break;
             case "AIRPORT_TRANSFER":
                 totalFare = airportFare(distance);
                 break;
             case "OUTSTATION": {
-                boolean suv  = "SUV".equalsIgnoreCase(request.getVehicleType());
-                double  base = suv ? 2000.0 : 1500.0;   // per 24 hr
-                double  perKm = suv ? 14.0  : 11.0;
+                boolean suv   = "SUV".equalsIgnoreCase(request.getVehicleType());
+                double  base  = suv ? settings.getDouble("fare.outstation.suv_base", 2000.0)
+                                    : settings.getDouble("fare.outstation.sedan_base", 1500.0);
+                double  perKm = suv ? settings.getDouble("fare.outstation.suv_perkm", 14.0)
+                                    : settings.getDouble("fare.outstation.sedan_perkm", 11.0);
                 totalFare = base + perKm * distance;
                 break;
             }
@@ -84,8 +86,8 @@ public class FareCalculationService {
                 .build();
     }
 
-    /** Fixed service charge + GST added to one-way, round-trip and hourly-rental fares. */
-    private static final double SERVICE_GST = 148.0;
+    /** Service charge + GST added to one-way, round-trip and hourly-rental fares (admin-editable). */
+    private double serviceGst() { return settings.getDouble("fare.service_gst", 148.0); }
 
     /**
      * Hourly rental: time (per-minute under 12h, reduced hourly at 12h+) + fuel
@@ -98,14 +100,14 @@ public class FareCalculationService {
 
         double perMin, reducedHourly, fuelBase;
         switch (v) {
-            case "MINI": perMin = 1.5; reducedHourly = 80.0;  fuelBase = 11.0; break;
-            case "SUV":  perMin = 3.0; reducedHourly = 160.0; fuelBase = 14.0; break;
-            default:     perMin = 2.0; reducedHourly = 100.0; fuelBase = 12.0; // SEDAN
+            case "MINI": perMin = settings.getDouble("fare.hourly.mini_permin", 1.5);  reducedHourly = settings.getDouble("fare.hourly.mini_reducedhr", 80.0);   fuelBase = settings.getDouble("fare.hourly.mini_fuel", 11.0);  break;
+            case "SUV":  perMin = settings.getDouble("fare.hourly.suv_permin", 3.0);   reducedHourly = settings.getDouble("fare.hourly.suv_reducedhr", 160.0);  fuelBase = settings.getDouble("fare.hourly.suv_fuel", 14.0);   break;
+            default:     perMin = settings.getDouble("fare.hourly.sedan_permin", 2.0); reducedHourly = settings.getDouble("fare.hourly.sedan_reducedhr", 100.0);fuelBase = settings.getDouble("fare.hourly.sedan_fuel", 12.0); // SEDAN
         }
 
         double time     = hours >= 12 ? hours * reducedHourly : hours * 60 * perMin;
         double fuelRate = km < 200 ? fuelBase : (km <= 250 ? fuelBase - 1 : fuelBase - 2);
-        double total    = time + km * fuelRate + SERVICE_GST;
+        double total    = time + km * fuelRate + serviceGst();
 
         double advance = total * (advancePct / 100.0);
         return FareCalculationResponse.builder()
@@ -119,9 +121,12 @@ public class FareCalculationService {
 
     /** Slab pricing: ₹12/km up to 100 km, ₹11/km for 100–200 km, ₹10/km beyond 200 km. */
     private double slabFare(double km) {
-        if (km <= 100) return km * 12.0;
-        if (km <= 200) return 100 * 12.0 + (km - 100) * 11.0;
-        return 100 * 12.0 + 100 * 11.0 + (km - 200) * 10.0;
+        double s1 = settings.getDouble("fare.slab1", 12.0);
+        double s2 = settings.getDouble("fare.slab2", 11.0);
+        double s3 = settings.getDouble("fare.slab3", 10.0);
+        if (km <= 100) return km * s1;
+        if (km <= 200) return 100 * s1 + (km - 100) * s2;
+        return 100 * s1 + 100 * s2 + (km - 200) * s3;
     }
 
     /**
@@ -129,8 +134,12 @@ public class FareCalculationService {
      * ₹24/km 100–150, ₹22/km 150–200, ₹20/km beyond 200. Charged on each band.
      */
     private double airportFare(double km) {
-        double[] edges = {30, 50, 100, 150, 200};      // band upper limits
-        double[] rates = {33, 30, 27, 24, 22, 20};     // rate within each band
+        double[] edges = {30, 50, 100, 150, 200};      // band upper limits (fixed)
+        double[] rates = {
+            settings.getDouble("fare.airport.b1", 33.0), settings.getDouble("fare.airport.b2", 30.0),
+            settings.getDouble("fare.airport.b3", 27.0), settings.getDouble("fare.airport.b4", 24.0),
+            settings.getDouble("fare.airport.b5", 22.0), settings.getDouble("fare.airport.b6", 20.0)
+        };
         double fare = 0, prev = 0;
         for (int i = 0; i < edges.length; i++) {
             if (km <= edges[i]) return fare + (km - prev) * rates[i];
