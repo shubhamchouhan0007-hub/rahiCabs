@@ -359,6 +359,7 @@ export default function GuestBooking() {
   const goToLocation = () => {
     if (!serviceType)  { setError('Please select a service type'); return; }
     if (!name.trim())  { setError('Please enter your full name'); return; }
+    if (!phoneNumber || phoneNumber.length !== 10) { setError('Please enter a valid 10-digit phone number'); return; }
     if (!journeyDate)  { setError('Please select your journey date'); return; }
     if (serviceType === 'ROUND_TRIP' && !returnDate) { setError('Please select a return date for Round Trip'); return; }
     setError(''); setStep(2);
@@ -692,6 +693,16 @@ export default function GuestBooking() {
                   </div>
                 </div>
                 <div className="gb-field">
+                  <label>Phone Number *</label>
+                  <div className="gb-input-icon">
+                    <i className="fas fa-phone" />
+                    <input type="tel" inputMode="numeric" maxLength={10}
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="10-digit mobile number" />
+                  </div>
+                </div>
+                <div className="gb-field">
                   <label>Email <span className="gb-optional">(optional)</span></label>
                   <div className="gb-input-icon">
                     <i className="fas fa-envelope" />
@@ -804,7 +815,7 @@ export default function GuestBooking() {
 
             {!otpSent ? (
               <>
-                <p className="gb-otp-desc">Enter your phone number to receive an OTP and confirm your booking</p>
+                <p className="gb-otp-desc">We'll send a one-time code to confirm your booking. Check your number below.</p>
                 <div className="gb-phone-input">
                   <span className="gb-phone-prefix">+91</span>
                   <input
