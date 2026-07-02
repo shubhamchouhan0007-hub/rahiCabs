@@ -7,7 +7,7 @@ import './Home.css'
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
-const SERVICE_TYPES = ['CITY_TAXI','ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION']
+const SERVICE_TYPES = ['ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION']
 const SERVICE_LABELS = { CITY_TAXI:'City Taxi', ONE_WAY:'One Way', HOURLY_RENTAL:'Hourly Rental', ROUND_TRIP:'Round Trip', AIRPORT_TRANSFER:'Airport Transfer', OUTSTATION:'Outstation' }
 const STATUS_COLOR   = { PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
 
@@ -36,7 +36,7 @@ export default function Home() {
   }
 
   /* ---- Guest Booking Form ---- */
-  const [bookForm, setBookForm] = useState({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'CITY_TAXI', scheduledAt:'', notes:'' })
+  const [bookForm, setBookForm] = useState({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'ONE_WAY', scheduledAt:'', notes:'' })
   const [bookStatus, setBookStatus] = useState(null) // {type, msg, bookingId}
   const [bookLoading, setBookLoading] = useState(false)
 
@@ -134,7 +134,7 @@ export default function Home() {
       const payload = { ...bookForm, scheduledAt: bookForm.scheduledAt ? bookForm.scheduledAt + ':00' : null, fare: fareEst ? fareEst.fare : null }
       const res = await axios.post('/api/public/bookings', payload)
       setBookStatus({ type:'success', msg:`Booking confirmed! Your Booking ID is #${res.data.id}. Save your phone number to track it.`, bookingId: res.data.id })
-      setBookForm({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'CITY_TAXI', scheduledAt:'', notes:'' })
+      setBookForm({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'ONE_WAY', scheduledAt:'', notes:'' })
     } catch {
       setBookStatus({ type:'error', msg:'Failed to submit booking. Please try again.' })
     } finally { setBookLoading(false) }
@@ -315,7 +315,6 @@ export default function Home() {
           </div>
           <div className="h-services-grid">
             {[
-              ['fas fa-taxi',     'City Taxi',         'Reliable rides available anytime, anywhere. Perfect for quick commutes or planned city travels.',         'CITY_TAXI'],
               ['fas fa-route',    'One Way Trip',       'Affordable one-way trips with no return charges. Budget-friendly for solo or quick rides.',               'ONE_WAY'],
               ['fas fa-clock',    'Hourly Rental',      'Book by the hour for city tours or errands. Flexible and comfortable for families or groups.',            'HOURLY_RENTAL'],
               ['fas fa-sync-alt', 'Round Trip',         'Round trip service for go-and-return journeys. Plan with complete peace of mind.',                        'ROUND_TRIP'],

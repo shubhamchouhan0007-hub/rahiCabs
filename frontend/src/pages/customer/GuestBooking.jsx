@@ -10,7 +10,6 @@ import './GuestBooking.css';
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
 
 const SERVICES = [
-  { type: 'CITY_TAXI',        icon: 'fas fa-taxi',            label: 'City Taxi',        desc: 'Quick rides in the city',           color: '#f97316' },
   { type: 'ONE_WAY',          icon: 'fas fa-route',           label: 'One Way Trip',     desc: 'No return charges',                 color: '#3b82f6' },
   { type: 'HOURLY_RENTAL',    icon: 'fas fa-clock',           label: 'Hourly Rental',    desc: 'Book by the hour',                  color: '#8b5cf6' },
   { type: 'ROUND_TRIP',       icon: 'fas fa-sync-alt',        label: 'Round Trip',       desc: 'Go & return journey',               color: '#22c55e' },
