@@ -234,7 +234,7 @@ export default function Home() {
             <li><a href="#contact"      onClick={() => setMenuOpen(false)}>Contact</a></li>
           </ul>
           <div className="h-nav-auth">
-            <Link to="/login" className="h-btn-ghost">Login</Link>
+            <Link to="/login" className="h-btn-ghost">Login / Signup</Link>
             <Link to="/login" className="h-btn-ghost">My Bookings</Link>
             <Link to="/book" className="h-btn h-btn-primary h-nav-cta"><i className="fas fa-taxi" /> Book Now</Link>
           </div>
