@@ -13,6 +13,7 @@ const NAV = [
   { path: '/admin/users',     label: 'Users',     icon: 'fas fa-users' },
   { path: '/admin/messages',  label: 'Messages',  icon: 'fas fa-envelope' },
   { path: '/admin/settings',  label: 'Settings',  icon: 'fas fa-cog' },
+  { path: '/admin/profile',   label: 'Profile',   icon: 'fas fa-user-circle' },
 ]
 
 export default function AdminDashboard() {
@@ -25,6 +26,7 @@ export default function AdminDashboard() {
         <Route path="users"     element={<AdminUsers />} />
         <Route path="messages"  element={<AdminMessages />} />
         <Route path="settings"  element={<AdminSettings />} />
+        <Route path="profile"   element={<AdminProfile />} />
         <Route path="*"         element={<Navigate to="/admin" replace />} />
       </Routes>
     </Layout>
@@ -32,6 +34,81 @@ export default function AdminDashboard() {
 }
 
 // ── Breadcrumb ───────────────────────────────────────────────────────────────
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+function AdminProfile() {
+  const toast = useToast()
+  const [profile, setProfile] = useState(null)
+  const [saving, setSaving]   = useState(false)
+  const [pw, setPw]           = useState({ currentPassword:'', newPassword:'', confirm:'' })
+  const [pwSaving, setPwSaving] = useState(false)
+
+  useEffect(() => {
+    api.get('/account/profile').then(r => setProfile(r.data))
+      .catch(() => toast('Failed to load profile.', 'error'))
+  }, [])
+
+  const set = (k, v) => setProfile(p => ({ ...p, [k]: v }))
+
+  const saveProfile = async () => {
+    setSaving(true)
+    try {
+      const res = await api.put('/account/profile', { name: profile.name, email: profile.email, phone: profile.phone })
+      toast(res.data.message || 'Profile updated.', 'success')
+    } catch (e) { toast(e.response?.data?.message || 'Update failed.', 'error') }
+    finally { setSaving(false) }
+  }
+
+  const changePw = async () => {
+    if (pw.newPassword !== pw.confirm) { toast('New passwords do not match.', 'warning'); return }
+    setPwSaving(true)
+    try {
+      const res = await api.put('/account/password', { currentPassword: pw.currentPassword, newPassword: pw.newPassword })
+      toast(res.data.message || 'Password changed.', 'success')
+      setPw({ currentPassword:'', newPassword:'', confirm:'' })
+    } catch (e) { toast(e.response?.data?.message || 'Change failed.', 'error') }
+    finally { setPwSaving(false) }
+  }
+
+  if (!profile) return <Spinner />
+
+  return (
+    <div>
+      <Breadcrumb current="Profile" />
+      <h2 className="page-title">My Profile</h2>
+
+      <div className="card settings-card" style={{ maxWidth: 640 }}>
+        <div className="settings-section">
+          <h3>Account Details <span className="tag" style={{ marginLeft: 8 }}>{profile.role}</span></h3>
+          <p className="settings-desc">Update your name, email and phone number.</p>
+          <div className="settings-grid">
+            <SettingField label="Full Name" value={profile.name} onChange={v => set('name', v)} />
+            <SettingField label="Email" type="email" value={profile.email} onChange={v => set('email', v)} hint="Changing email requires re-login" />
+            <SettingField label="Phone" value={profile.phone} onChange={v => set('phone', v)} hint="10-digit number" />
+          </div>
+          <button className="btn-primary-sm" style={{ marginTop: 16 }} onClick={saveProfile} disabled={saving}>
+            {saving ? <><i className="fas fa-spinner fa-spin" /> Saving…</> : <><i className="fas fa-save" /> Save Profile</>}
+          </button>
+        </div>
+      </div>
+
+      <div className="card settings-card mt-24" style={{ maxWidth: 640 }}>
+        <div className="settings-section">
+          <h3>Change Password</h3>
+          <p className="settings-desc">Enter your current password and choose a new one.</p>
+          <div className="settings-grid">
+            <SettingField label="Current Password" type="password" value={pw.currentPassword} onChange={v => setPw(p => ({ ...p, currentPassword: v }))} />
+            <SettingField label="New Password" type="password" value={pw.newPassword} onChange={v => setPw(p => ({ ...p, newPassword: v }))} hint="Min 6 characters" />
+            <SettingField label="Confirm New Password" type="password" value={pw.confirm} onChange={v => setPw(p => ({ ...p, confirm: v }))} />
+          </div>
+          <button className="btn-primary-sm" style={{ marginTop: 16 }} onClick={changePw} disabled={pwSaving}>
+            {pwSaving ? <><i className="fas fa-spinner fa-spin" /> Updating…</> : <><i className="fas fa-key" /> Change Password</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Breadcrumb({ current }) {
   const navigate = useNavigate()
