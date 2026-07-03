@@ -45,7 +45,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/send-otp",
-                        "/api/customer/verify-otp", "/api/customer/login",
+                        "/api/customer/verify-otp", "/api/customer/login", "/api/customer/firebase-login",
                         "/api/customer/calculate-fare", "/api/customer/book",
                         "/api/customer/verify-payment", "/error").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
