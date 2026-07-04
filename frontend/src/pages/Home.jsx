@@ -4,13 +4,10 @@ import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 import { useCustomer } from '../context/CustomerContext'
 import { fmtDateTime } from '../utils/format'
-import { loadGoogleMaps } from '../utils/loadGoogleMaps'
 import './Home.css'
 
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 const API = import.meta.env.VITE_API_URL || '/api'   // absolute in prod, proxied in dev
 
-const SERVICE_TYPES = ['ONE_WAY','HOURLY_RENTAL','ROUND_TRIP','AIRPORT_TRANSFER','OUTSTATION']
 const SERVICE_LABELS = { CITY_TAXI:'City Taxi', ONE_WAY:'One Way', HOURLY_RENTAL:'Hourly Rental', ROUND_TRIP:'Round Trip', AIRPORT_TRANSFER:'Airport Transfer', OUTSTATION:'Outstation' }
 const STATUS_COLOR   = { PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
 
@@ -46,111 +43,6 @@ export default function Home() {
     } catch {
       setContactStatus({ type:'error', msg:'Failed to send. Please try again.' })
     } finally { setContactLoading(false) }
-  }
-
-  /* ---- Guest Booking Form ---- */
-  const [bookForm, setBookForm] = useState({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'ONE_WAY', scheduledAt:'', notes:'' })
-  const [bookStatus, setBookStatus] = useState(null) // {type, msg, bookingId}
-  const [bookLoading, setBookLoading] = useState(false)
-
-  // Location autocomplete
-  const [pickupSuggestions, setPickupSuggestions] = useState([])
-  const [dropSuggestions, setDropSuggestions] = useState([])
-  const [pickupLoading, setPickupLoading] = useState(false)
-  const [dropLoading, setDropLoading] = useState(false)
-  const pickupTimer  = useRef(null)
-  const dropTimer    = useRef(null)
-  const pickupCoord  = useRef(null)   // { lat, lng }
-  const dropCoord    = useRef(null)
-  const acRef        = useRef(null)
-  const geocoderRef  = useRef(null)
-  const [fareEst, setFareEst] = useState(null)
-
-  const haversineKm = (lat1, lng1, lat2, lng2) => {
-    const R = 6371, toRad = d => d * Math.PI / 180
-    const dLat = toRad(lat2 - lat1), dLon = toRad(lng2 - lng1)
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  }
-
-  const recalcFare = (pc, dc) => {
-    if (pc && dc) {
-      const dist = haversineKm(pc.lat, pc.lng, dc.lat, dc.lng)
-      setFareEst({ dist: dist.toFixed(1), fare: Math.max(150, Math.round(dist * 11)) })
-    } else {
-      setFareEst(null)
-    }
-  }
-
-  const ensureGoogleApi = async () => {
-    await loadGoogleMaps(MAPS_KEY)
-    if (!acRef.current)       acRef.current       = new window.google.maps.places.AutocompleteService()
-    if (!geocoderRef.current) geocoderRef.current = new window.google.maps.Geocoder()
-  }
-
-  const fetchSuggestions = async (query, setSuggestions, setLoading) => {
-    if (!query || query.length < 3) { setSuggestions([]); return }
-    setLoading(true)
-    try {
-      await ensureGoogleApi()
-      acRef.current.getPlacePredictions(
-        {
-          input: query,
-          componentRestrictions: { country: 'in' },
-          location: new window.google.maps.LatLng(25.5941, 85.1376),
-          radius: 400000,
-        },
-        (preds, status) => {
-          setSuggestions((status === 'OK' && preds) ? preds : [])
-          setLoading(false)
-        }
-      )
-    } catch { setSuggestions([]); setLoading(false) }
-  }
-
-  const handleBookChange = e => {
-    const { name, value } = e.target
-    setBookForm(f => ({ ...f, [name]: value }))
-    if (name === 'pickupLocation') {
-      clearTimeout(pickupTimer.current)
-      pickupCoord.current = null; recalcFare(null, dropCoord.current)
-      pickupTimer.current = setTimeout(() => fetchSuggestions(value, setPickupSuggestions, setPickupLoading), 350)
-    }
-    if (name === 'dropLocation') {
-      clearTimeout(dropTimer.current)
-      dropCoord.current = null; recalcFare(pickupCoord.current, null)
-      dropTimer.current = setTimeout(() => fetchSuggestions(value, setDropSuggestions, setDropLoading), 350)
-    }
-  }
-
-  const selectSuggestion = async (field, prediction) => {
-    const label = prediction.description
-    setBookForm(f => ({ ...f, [field]: label }))
-    if (field === 'pickupLocation') setPickupSuggestions([])
-    if (field === 'dropLocation')   setDropSuggestions([])
-    try {
-      await ensureGoogleApi()
-      geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
-        if (status !== 'OK' || !results[0]) return
-        const loc = results[0].geometry.location
-        const coords = { lat: loc.lat(), lng: loc.lng() }
-        if (field === 'pickupLocation') { pickupCoord.current = coords; recalcFare(coords, dropCoord.current) }
-        if (field === 'dropLocation')   { dropCoord.current   = coords; recalcFare(pickupCoord.current, coords) }
-      })
-    } catch {}
-  }
-
-  const handleBookSubmit = async e => {
-    e.preventDefault()
-    setBookLoading(true); setBookStatus(null)
-    try {
-      const payload = { ...bookForm, scheduledAt: bookForm.scheduledAt ? bookForm.scheduledAt + ':00' : null, fare: fareEst ? fareEst.fare : null }
-      const res = await axios.post(`${API}/public/bookings`, payload)
-      setBookStatus({ type:'success', msg:`Booking confirmed! Your Booking ID is #${res.data.id}. Save your phone number to track it.`, bookingId: res.data.id })
-      setBookForm({ guestName:'', guestPhone:'', pickupLocation:'', dropLocation:'', serviceType:'ONE_WAY', scheduledAt:'', notes:'' })
-    } catch {
-      setBookStatus({ type:'error', msg:'Failed to submit booking. Please try again.' })
-    } finally { setBookLoading(false) }
   }
 
   /* ---- Check Booking ---- */
@@ -383,100 +275,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== BOOK A RIDE (guest) ===== */}
-      <section className="h-section h-book-section" id="book-ride">
-        <div className="h-container">
-          <div className="h-section-header reveal">
-            <span className="h-section-tag">No Account Needed</span>
-            <h2>Book Your <span className="h-gradient-text">Ride Now</span></h2>
-            <p>Fill in the details below — no registration required. We'll confirm shortly.</p>
-          </div>
-          <div className="h-book-card reveal">
-            {bookStatus && (
-              <div className={`h-book-alert h-book-alert-${bookStatus.type}`}>
-                <i className={`fas fa-${bookStatus.type === 'success' ? 'check-circle' : 'exclamation-circle'}`} />
-                {bookStatus.msg}
-              </div>
-            )}
-            <form className="h-book-form" onSubmit={handleBookSubmit}>
-              <div className="h-book-row">
-                <div className="h-fg">
-                  <label><i className="fas fa-user" /> Full Name *</label>
-                  <input name="guestName" value={bookForm.guestName} onChange={handleBookChange} placeholder="Your full name" required />
-                </div>
-                <div className="h-fg">
-                  <label><i className="fas fa-phone" /> Phone Number *</label>
-                  <input name="guestPhone" value={bookForm.guestPhone} onChange={handleBookChange} placeholder="10-digit mobile number" required pattern="[6-9]\d{9}" title="Valid 10-digit Indian mobile number" />
-                </div>
-              </div>
-              <div className="h-book-row">
-                <div className="h-fg">
-                  <label><i className="fas fa-map-marker-alt" /> Pickup Location *</label>
-                  <div className="h-autocomplete-wrap">
-                    <input name="pickupLocation" value={bookForm.pickupLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required autoComplete="off" />
-                    {pickupLoading && <span className="h-autocomplete-spinner"><i className="fas fa-spinner fa-spin" /></span>}
-                    {pickupSuggestions.length > 0 && (
-                      <ul className="h-suggestions">
-                        {pickupSuggestions.map((s, i) => (
-                          <li key={i} onMouseDown={() => selectSuggestion('pickupLocation', s)}>
-                            <i className="fas fa-map-marker-alt" /> {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                <div className="h-fg">
-                  <label><i className="fas fa-flag-checkered" /> Drop Location *</label>
-                  <div className="h-autocomplete-wrap">
-                    <input name="dropLocation" value={bookForm.dropLocation} onChange={handleBookChange} placeholder="City / Area / Landmark" required autoComplete="off" />
-                    {dropLoading && <span className="h-autocomplete-spinner"><i className="fas fa-spinner fa-spin" /></span>}
-                    {dropSuggestions.length > 0 && (
-                      <ul className="h-suggestions">
-                        {dropSuggestions.map((s, i) => (
-                          <li key={i} onMouseDown={() => selectSuggestion('dropLocation', s)}>
-                            <i className="fas fa-map-marker-alt" /> {s.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {fareEst && (
-                <div className="h-fare-estimate">
-                  <i className="fas fa-route" />
-                  <span>Estimated: <b>{fareEst.dist} km</b></span>
-                  <span className="h-fare-amount">≈ ₹{fareEst.fare.toLocaleString('en-IN')}</span>
-                  <small>(at ₹11/km, min ₹150)</small>
-                </div>
-              )}
-              <div className="h-book-row">
-                <div className="h-fg">
-                  <label><i className="fas fa-taxi" /> Service Type *</label>
-                  <select name="serviceType" value={bookForm.serviceType} onChange={handleBookChange} required>
-                    {SERVICE_TYPES.map(s => <option key={s} value={s}>{SERVICE_LABELS[s]}</option>)}
-                  </select>
-                </div>
-                <div className="h-fg">
-                  <label><i className="fas fa-calendar-alt" /> Scheduled Date & Time</label>
-                  <input type="datetime-local" name="scheduledAt" value={bookForm.scheduledAt} onChange={handleBookChange} min={new Date().toISOString().slice(0,16)} />
-                </div>
-              </div>
-              <div className="h-fg">
-                <label><i className="fas fa-comment" /> Notes (optional)</label>
-                <textarea name="notes" value={bookForm.notes} onChange={handleBookChange} rows="2" placeholder="Any special requirements..." />
-              </div>
-              <button type="submit" className="h-btn h-btn-primary h-btn-full" disabled={bookLoading}>
-                <i className={`fas fa-${bookLoading ? 'spinner fa-spin' : 'paper-plane'}`} />
-                {bookLoading ? 'Booking...' : 'Confirm Booking'}
-              </button>
-              <p className="h-book-note">Already have an account? <Link to="/login">Login</Link> for a better experience. New user? <Link to="/register">Register here</Link>.</p>
-            </form>
           </div>
         </div>
       </section>
