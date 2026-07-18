@@ -18,6 +18,7 @@ public class NotificationService {
     private final SmsService sms;
     private final EmailService email;
     private final DriverProfileRepository driverProfileRepository;
+    private final PushNotificationService push;
 
     @Value("${app.admin.phone:}")
     private String adminPhone;
@@ -47,6 +48,11 @@ public class NotificationService {
 
     private String fmt(Double fare) {
         return fare != null ? String.format("%.0f", fare) : "0";
+    }
+
+    /** Push to the app if this booking belongs to a mobile customer (no-op otherwise). */
+    private void pushCustomer(Booking b, String title, String body) {
+        if (b.getCustomer() != null) push.sendToCustomer(b.getCustomer(), title, body);
     }
 
     // ── Event: New booking created ────────────────────────────────────────────
@@ -116,6 +122,9 @@ public class NotificationService {
             email.send(uEmail, "Payment Confirmed — RahiCab Booking #" + b.getId(),
                 EmailService.wrap("Payment Received ✓", body));
         }
+
+        pushCustomer(b, "Payment confirmed ✓",
+            "Advance ₹" + advance + " received for booking #" + b.getId() + ". A driver will be assigned soon.");
     }
 
     // ── Event: Driver assigned ────────────────────────────────────────────────
@@ -155,6 +164,9 @@ public class NotificationService {
             email.send(uEmail, "Driver Assigned — RahiCab Booking #" + b.getId(),
                 EmailService.wrap("Your Driver is on the Way", body));
         }
+
+        pushCustomer(b, "Driver assigned 🚕",
+            driverName + " is assigned to booking #" + b.getId() + ". Call: " + driverPhone);
     }
 
     // ── Event: Ride started ───────────────────────────────────────────────────
@@ -167,6 +179,8 @@ public class NotificationService {
                 "Hi " + name + ", your RahiCab ride #" + b.getId() +
                 " has started! Sit back and enjoy the journey.");
         }
+
+        pushCustomer(b, "Ride started 🚗", "Your ride #" + b.getId() + " has started. Enjoy the journey!");
     }
 
     // ── Event: Ride completed ─────────────────────────────────────────────────
@@ -207,6 +221,9 @@ public class NotificationService {
             sms.send(adminPhone,
                 "Booking #" + b.getId() + " completed. Rs." + total + " earned. Customer: " + name);
         }
+
+        pushCustomer(b, "Ride completed ✓",
+            "Booking #" + b.getId() + " done. Total ₹" + total + " · pay ₹" + remain + " to the driver. Thank you!");
     }
 
     // ── Event: Booking cancelled ──────────────────────────────────────────────
@@ -233,5 +250,7 @@ public class NotificationService {
             email.send(uEmail, "Booking Cancelled — RahiCab #" + b.getId(),
                 EmailService.wrap("Booking Cancelled", body));
         }
+
+        pushCustomer(b, "Booking cancelled", "Your booking #" + b.getId() + " has been cancelled.");
     }
 }

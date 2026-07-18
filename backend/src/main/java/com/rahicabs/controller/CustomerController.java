@@ -162,6 +162,16 @@ public class CustomerController {
         ));
     }
 
+    /** Register/refresh this customer's FCM device token for push notifications. */
+    @PostMapping("/device-token")
+    public ResponseEntity<ApiResponse> saveDeviceToken(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, String> body) {
+        Customer customer = getCustomerFromToken(token);
+        customerService.saveDeviceToken(customer, body.get("fcmToken"));
+        return ResponseEntity.ok(ApiResponse.ok("Device registered for notifications"));
+    }
+
     @GetMapping("/bookings")
     public ResponseEntity<List<BookingResponse>> getBookings(@RequestHeader("Authorization") String token) {
         Customer customer = getCustomerFromToken(token);

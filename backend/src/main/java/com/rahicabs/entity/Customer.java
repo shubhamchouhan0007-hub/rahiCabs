@@ -31,6 +31,10 @@ public class Customer {
 
     private String passwordHash;
 
+    /** Firebase Cloud Messaging device token for push notifications (nullable). */
+    @Column(length = 512)
+    private String fcmToken;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthType authType;

@@ -105,6 +105,16 @@ public class CustomerService {
         );
     }
 
+    /** Store the customer's FCM device token for push notifications. */
+    @Transactional
+    public void saveDeviceToken(Customer customer, String fcmToken) {
+        if (fcmToken == null || fcmToken.isBlank()) return;
+        if (!fcmToken.equals(customer.getFcmToken())) {
+            customer.setFcmToken(fcmToken);
+            customerRepository.save(customer);
+        }
+    }
+
     @Transactional
     public Customer getOrCreateCustomer(String phoneNumber, String fullName, String email) {
         Customer customer = customerRepository.findByPhoneNumber(phoneNumber).orElse(null);
