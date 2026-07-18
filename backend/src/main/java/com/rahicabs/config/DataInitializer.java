@@ -60,10 +60,14 @@ public class DataInitializer implements ApplicationRunner {
             entry("fare.per_km",        "11.0"),
             entry("fare.minimum",       "150.0"),
             entry("fare.advance_pct",   "15.0"),
-            // One-way / round-trip distance slabs (₹/km)
+            // One-way distance slabs (₹/km)
             entry("fare.slab1",         "12"),
             entry("fare.slab2",         "11"),
             entry("fare.slab3",         "10"),
+            // Round-trip distance slabs (₹/km) — separate from one-way
+            entry("fare.rt_slab1",      "12"),
+            entry("fare.rt_slab2",      "11"),
+            entry("fare.rt_slab3",      "10"),
             // Flat service charge + GST added to one-way, round-trip & hourly fares
             entry("fare.service_gst",   "148"),
             // Outstation base + per-km, by vehicle class

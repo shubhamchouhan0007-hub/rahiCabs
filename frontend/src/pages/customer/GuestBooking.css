@@ -43,6 +43,7 @@
 .gb-back {
   color: rgba(255,255,255,0.6);
   text-decoration: none;
+  background: transparent; border: none; cursor: pointer;
   width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
@@ -68,6 +69,9 @@
 .gb-steps { display: flex; align-items: center; margin-left: auto; }
 
 .gb-step { display: flex; align-items: center; gap: 6px; }
+.gb-step.clickable { cursor: pointer; }
+.gb-step.clickable:hover .gb-step-bubble { transform: scale(1.08); }
+.gb-step.clickable:hover .gb-step-label { opacity: 1; }
 
 .gb-step-connector {
   width: 24px; height: 2px;

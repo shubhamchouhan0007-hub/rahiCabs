@@ -53,7 +53,7 @@ public class FareCalculationService {
             case "ROUND_TRIP":
                 distance = distance * 2;   // there & back
                 duration = duration * 2;
-                totalFare = slabFare(distance) + serviceGst();
+                totalFare = rtSlabFare(distance) + serviceGst();
                 break;
             case "ONE_WAY":
                 totalFare = slabFare(distance) + serviceGst();
@@ -119,11 +119,21 @@ public class FareCalculationService {
                 .build();
     }
 
-    /** Slab pricing: ₹12/km up to 100 km, ₹11/km for 100–200 km, ₹10/km beyond 200 km. */
+    /** One-way slab pricing: ₹12/km up to 100 km, ₹11/km for 100–200 km, ₹10/km beyond. */
     private double slabFare(double km) {
         double s1 = settings.getDouble("fare.slab1", 12.0);
         double s2 = settings.getDouble("fare.slab2", 11.0);
         double s3 = settings.getDouble("fare.slab3", 10.0);
+        if (km <= 100) return km * s1;
+        if (km <= 200) return 100 * s1 + (km - 100) * s2;
+        return 100 * s1 + 100 * s2 + (km - 200) * s3;
+    }
+
+    /** Round-trip slab pricing (separate rates from one-way), applied to the round-trip distance. */
+    private double rtSlabFare(double km) {
+        double s1 = settings.getDouble("fare.rt_slab1", 12.0);
+        double s2 = settings.getDouble("fare.rt_slab2", 11.0);
+        double s3 = settings.getDouble("fare.rt_slab3", 10.0);
         if (km <= 100) return km * s1;
         if (km <= 200) return 100 * s1 + (km - 100) * s2;
         return 100 * s1 + 100 * s2 + (km - 200) * s3;

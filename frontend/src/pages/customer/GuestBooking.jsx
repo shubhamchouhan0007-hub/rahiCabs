@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import customerApi from '../../services/customerApi';
+import { useCustomer } from '../../context/CustomerContext';
 import TopBar from '../../components/TopBar';
 import { loadGoogleMaps } from '../../utils/loadGoogleMaps';
 import { auth } from '../../utils/firebase';
@@ -41,6 +42,7 @@ const POPULAR_AIRPORTS = [
 
 export default function GuestBooking() {
   const navigate = useNavigate();
+  const { login: custLogin } = useCustomer();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
 
@@ -388,6 +390,17 @@ export default function GuestBooking() {
     } finally { setLoading(false); }
   };
 
+  // Header back arrow: step back one, or leave to the homepage from step 1.
+  const handleHeaderBack = () => {
+    if (step > 1) { setError(''); setStep(step - 1); }
+    else navigate('/');
+  };
+
+  // Step bubbles: jump to an already-completed step (never skip ahead).
+  const goToStep = (n) => {
+    if (n < step) { setError(''); setStep(n); }
+  };
+
   /* ── OTP ─────────────────────────────────── */
   const startCountdown = () => {
     setCountdown(60);
@@ -440,6 +453,13 @@ export default function GuestBooking() {
       // Verify the OTP with Firebase → get a signed ID token proving phone ownership
       const result = await confirmationRef.current.confirm(otpStr);
       const firebaseIdToken = await result.user.getIdToken();
+
+      // A verified OTP means the phone is theirs — log them in so the session
+      // persists across navigation (homepage, My Bookings, etc.). Non-blocking.
+      try {
+        const loginRes = await customerApi.loginWithFirebase(firebaseIdToken);
+        custLogin(loginRes.data);
+      } catch { /* keep booking even if session setup hiccups */ }
 
       const isHourly = serviceType === 'HOURLY_RENTAL';
       const drop = dropCoords || pickupCoords;  // hourly rental has no separate drop
@@ -496,21 +516,32 @@ export default function GuestBooking() {
     <div className="gb-page">
       {/* ── Header ────────────────────────────── */}
       <header className="gb-header">
-        <Link to="/" className="gb-back"><i className="fas fa-arrow-left" /></Link>
+        <button type="button" className="gb-back" onClick={handleHeaderBack} aria-label="Go back">
+          <i className="fas fa-arrow-left" />
+        </button>
         <Link to="/" className="gb-logo">
           <span className="gb-logo-icon"><i className="fas fa-taxi" /></span>
           <span>Rahi<strong>Cab</strong></span>
         </Link>
         <div className="gb-steps">
-          {STEPS.map((label, i) => (
-            <div key={i} className={`gb-step${step === i + 1 ? ' active' : ''}${step > i + 1 ? ' done' : ''}`}>
-              {i > 0 && <div className="gb-step-connector" />}
-              <div className="gb-step-bubble">
-                {step > i + 1 ? <i className="fas fa-check" /> : i + 1}
+          {STEPS.map((label, i) => {
+            const done = step > i + 1;
+            return (
+              <div
+                key={i}
+                className={`gb-step${step === i + 1 ? ' active' : ''}${done ? ' done' : ''}${done ? ' clickable' : ''}`}
+                onClick={() => goToStep(i + 1)}
+                role={done ? 'button' : undefined}
+                title={done ? `Back to ${label}` : undefined}
+              >
+                {i > 0 && <div className="gb-step-connector" />}
+                <div className="gb-step-bubble">
+                  {done ? <i className="fas fa-check" /> : i + 1}
+                </div>
+                <span className="gb-step-label">{label}</span>
               </div>
-              <span className="gb-step-label">{label}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </header>
 

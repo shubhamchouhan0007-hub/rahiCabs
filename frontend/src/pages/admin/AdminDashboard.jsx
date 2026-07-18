@@ -534,11 +534,19 @@ function AdminSettings() {
               <SettingField label="Service Charge + GST (₹)" type="number" value={settings['fare.service_gst'] || ''} onChange={v => set('fare.service_gst', v)} hint="Flat, added to one-way / round-trip / hourly" />
             </div>
 
-            <h4 className="settings-group-title">One-way &amp; Round-trip slabs (₹/km)</h4>
+            <h4 className="settings-group-title">One-way slabs (₹/km)</h4>
             <div className="settings-grid">
               <SettingField label="Slab 1 — up to 100 km" type="number" value={settings['fare.slab1'] || ''} onChange={v => set('fare.slab1', v)} hint="e.g. 12" />
               <SettingField label="Slab 2 — 100–200 km" type="number" value={settings['fare.slab2'] || ''} onChange={v => set('fare.slab2', v)} hint="e.g. 11" />
               <SettingField label="Slab 3 — beyond 200 km" type="number" value={settings['fare.slab3'] || ''} onChange={v => set('fare.slab3', v)} hint="e.g. 10" />
+            </div>
+
+            <h4 className="settings-group-title">Round-trip slabs (₹/km)</h4>
+            <p className="settings-desc">Applied to the total round-trip distance (pickup → drop → back).</p>
+            <div className="settings-grid">
+              <SettingField label="Slab 1 — up to 100 km" type="number" value={settings['fare.rt_slab1'] || ''} onChange={v => set('fare.rt_slab1', v)} hint="e.g. 12" />
+              <SettingField label="Slab 2 — 100–200 km" type="number" value={settings['fare.rt_slab2'] || ''} onChange={v => set('fare.rt_slab2', v)} hint="e.g. 11" />
+              <SettingField label="Slab 3 — beyond 200 km" type="number" value={settings['fare.rt_slab3'] || ''} onChange={v => set('fare.rt_slab3', v)} hint="e.g. 10" />
             </div>
 
             <h4 className="settings-group-title">Outstation</h4>
