@@ -51,9 +51,11 @@ public class FareCalculationService {
         double totalFare;
         switch (serviceType) {
             case "ROUND_TRIP":
-                distance = distance * 2;   // there & back
+                // Slab tier is decided by the ONE-WAY distance, then charged both ways.
+                // e.g. 99 km one-way stays in the ≤100 km slab (not the 198 km slab).
                 duration = duration * 2;
-                totalFare = rtSlabFare(distance) + serviceGst();
+                totalFare = rtSlabFare(distance) * 2 + serviceGst();
+                distance = distance * 2;   // report the total round-trip distance
                 break;
             case "ONE_WAY":
                 totalFare = slabFare(distance) + serviceGst();
@@ -129,7 +131,8 @@ public class FareCalculationService {
         return 100 * s1 + 100 * s2 + (km - 200) * s3;
     }
 
-    /** Round-trip slab pricing (separate rates from one-way), applied to the round-trip distance. */
+    /** Round-trip slab pricing (separate rates from one-way), computed on the ONE-WAY distance
+     *  and then charged both ways by the caller — so slab tiers use the one-way km. */
     private double rtSlabFare(double km) {
         double s1 = settings.getDouble("fare.rt_slab1", 12.0);
         double s2 = settings.getDouble("fare.rt_slab2", 11.0);

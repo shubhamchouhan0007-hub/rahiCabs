@@ -542,7 +542,7 @@ function AdminSettings() {
             </div>
 
             <h4 className="settings-group-title">Round-trip slabs (₹/km)</h4>
-            <p className="settings-desc">Applied to the total round-trip distance (pickup → drop → back).</p>
+            <p className="settings-desc">Slab tier is chosen by the one-way distance, then charged both ways (e.g. 99 km one-way = ≤100 km slab).</p>
             <div className="settings-grid">
               <SettingField label="Slab 1 — up to 100 km" type="number" value={settings['fare.rt_slab1'] || ''} onChange={v => set('fare.rt_slab1', v)} hint="e.g. 12" />
               <SettingField label="Slab 2 — 100–200 km" type="number" value={settings['fare.rt_slab2'] || ''} onChange={v => set('fare.rt_slab2', v)} hint="e.g. 11" />
