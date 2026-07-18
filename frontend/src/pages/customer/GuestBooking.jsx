@@ -363,7 +363,12 @@ export default function GuestBooking() {
     if (!name.trim())  { setError('Please enter your full name'); return; }
     if (!phoneNumber || phoneNumber.length !== 10) { setError('Please enter a valid 10-digit phone number'); return; }
     if (!journeyDate)  { setError('Please select your journey date'); return; }
-    if (serviceType === 'ROUND_TRIP' && !returnDate) { setError('Please select a return date for Round Trip'); return; }
+    if (serviceType === 'ROUND_TRIP') {
+      if (!returnDate) { setError('Please select a return date for Round Trip'); return; }
+      if (new Date(returnDate) <= new Date(journeyDate)) {
+        setError('Return date & time must be after the journey date & time'); return;
+      }
+    }
     setError(''); setStep(2);
   };
 
@@ -744,7 +749,13 @@ export default function GuestBooking() {
                   <label>Journey Date & Time *</label>
                   <div className="gb-input-icon">
                     <i className="fas fa-calendar-alt" />
-                    <input type="datetime-local" value={journeyDate} onChange={e => setJourneyDate(e.target.value)} min={minDate} />
+                    <input type="datetime-local" value={journeyDate}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setJourneyDate(v);
+                        // Clear a now-invalid return date so it can't precede departure.
+                        if (returnDate && new Date(returnDate) <= new Date(v)) setReturnDate('');
+                      }} min={minDate} />
                   </div>
                 </div>
                 {serviceType === 'ROUND_TRIP' && (
