@@ -101,6 +101,7 @@ export default function GuestBooking() {
   const [otpSent, setOtpSent]         = useState(false);
   const recaptchaRef                   = useRef(null);  // Firebase invisible reCAPTCHA
   const confirmationRef                = useRef(null);  // Firebase confirmationResult
+  const leadSentRef                    = useRef(false); // fare-viewed lead emailed once
   const timerRef                       = useRef(null);
   const [countdown, setCountdown]     = useState(0);
 
@@ -389,6 +390,15 @@ export default function GuestBooking() {
         rentalKm:    isHourly ? rentalPackage.k : null,
       });
       setFareDetails(res.data);
+      // Lead capture: tell admin someone viewed a fare (once per session, non-blocking)
+      if (!leadSentRef.current) {
+        leadSentRef.current = true;
+        customerApi.fareLead({
+          name, phone: phoneNumber, email,
+          pickup: pickupLocation, drop: dropLocation || pickupLocation,
+          serviceType, fare: res.data.totalFare,
+        }).catch(() => {});
+      }
       setStep(3);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to calculate fare. Try again.');

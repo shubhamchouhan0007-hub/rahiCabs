@@ -93,6 +93,26 @@ public class NotificationService {
         }
     }
 
+    // ── Event: Fare viewed but not booked (lead capture) ──────────────────────
+    public void onFareLead(String name, String phone, String custEmail, String pickup,
+                           String drop, String service, Double fare) {
+        if (adminEmail == null || adminEmail.isBlank()) return;
+        String svc = service != null ? service.replace('_', ' ') : "";
+        String body = "<p>A visitor checked a fare but has <b>not booked/paid</b> yet — follow up:</p>"
+            + "<div class='row'><span>Name</span><span>" + safe(name) + "</span></div>"
+            + "<div class='row'><span>Phone</span><span>" + safe(phone) + "</span></div>"
+            + "<div class='row'><span>Email</span><span>" + safe(custEmail) + "</span></div>"
+            + "<div class='row'><span>Service</span><span>" + svc + "</span></div>"
+            + "<div class='row'><span>Pickup</span><span>" + safe(pickup) + "</span></div>"
+            + "<div class='row'><span>Drop</span><span>" + safe(drop) + "</span></div>"
+            + "<div class='row'><span>Quoted Fare</span><span>Rs." + fmt(fare) + "</span></div>"
+            + "<div class='msg-box'>This is a lead — the customer saw this fare but did not complete payment.</div>";
+        email.send(adminEmail, "Fare viewed (not booked) — " + safe(name) + " " + safe(phone),
+            EmailService.wrap("Fare Enquiry / Lead", body));
+    }
+
+    private static String safe(String s) { return (s == null || s.isBlank()) ? "—" : s; }
+
     // ── Event: Payment confirmed ──────────────────────────────────────────────
 
     public void onPaymentConfirmed(Booking b) {

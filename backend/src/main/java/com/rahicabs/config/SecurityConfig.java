@@ -46,7 +46,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/public/**", "/api/customer/send-otp",
                         "/api/customer/verify-otp", "/api/customer/login", "/api/customer/firebase-login",
-                        "/api/customer/calculate-fare", "/api/customer/book",
+                        "/api/customer/calculate-fare", "/api/customer/fare-lead", "/api/customer/book",
                         "/api/customer/verify-payment", "/error").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/driver/**").hasRole("DRIVER")

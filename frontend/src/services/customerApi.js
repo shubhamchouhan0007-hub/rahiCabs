@@ -18,8 +18,12 @@ const customerApi = {
     axios.post(`${API_URL}/customer/firebase-login`, { firebaseIdToken }),
 
   // Fare Calculation
-  calculateFare: (data) => 
+  calculateFare: (data) =>
     axios.post(`${API_URL}/customer/calculate-fare`, data),
+
+  // Lead capture — visitor viewed a fare but hasn't paid (emails admin)
+  fareLead: (data) =>
+    axios.post(`${API_URL}/customer/fare-lead`, data),
 
   // Booking — pass the customer's session token to book without OTP (logged-in users)
   createBooking: (bookingData, token) =>

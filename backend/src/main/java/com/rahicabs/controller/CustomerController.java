@@ -69,6 +69,21 @@ public class CustomerController {
         return ResponseEntity.ok(fareService.calculateFare(request));
     }
 
+    /** Lead capture: a visitor viewed a fare but hasn't paid — email admin their details. */
+    @PostMapping("/fare-lead")
+    public ResponseEntity<ApiResponse> fareLead(@RequestBody Map<String, Object> body) {
+        try {
+            Object fare = body.get("fare");
+            notificationService.onFareLead(
+                str(body.get("name")), str(body.get("phone")), str(body.get("email")),
+                str(body.get("pickup")), str(body.get("drop")), str(body.get("serviceType")),
+                fare == null ? null : Double.valueOf(fare.toString()));
+        } catch (Exception ignored) { /* never block the booking flow */ }
+        return ResponseEntity.ok(ApiResponse.ok("ok"));
+    }
+
+    private static String str(Object o) { return o == null ? null : o.toString(); }
+
     // ========== Guest Booking ==========
 
     @PostMapping("/book")
