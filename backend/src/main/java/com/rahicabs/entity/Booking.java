@@ -64,6 +64,9 @@ public class Booking {
     private Double remainingAmount;
     private Boolean advancePaid;
 
+    // 4-digit code the customer shares with the driver to start the ride
+    private String startOtp;
+
     private String notes;
 
     @Column(updatable = false)

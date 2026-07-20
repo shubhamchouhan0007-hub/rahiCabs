@@ -38,6 +38,35 @@ public class DriverController {
         return ResponseEntity.ok(bookingService.updateRideStatus(id, status, user));
     }
 
+    // Accept an assigned ride
+    @PutMapping("/rides/{id}/accept")
+    public ResponseEntity<BookingResponse> accept(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(bookingService.driverAccept(id, user));
+    }
+
+    // Reject an assigned ride (returns it to the pool for reassignment)
+    @PutMapping("/rides/{id}/reject")
+    public ResponseEntity<BookingResponse> reject(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(bookingService.driverReject(id, user));
+    }
+
+    // Start the ride after verifying the customer's start OTP
+    @PutMapping("/rides/{id}/start")
+    public ResponseEntity<?> start(@PathVariable Long id, @RequestBody Map<String, String> body,
+                                   @AuthenticationPrincipal User user) {
+        try {
+            return ResponseEntity.ok(bookingService.driverStart(id, user, body.get("otp")));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // Complete the ride (collect the remaining balance from the customer)
+    @PutMapping("/rides/{id}/complete")
+    public ResponseEntity<BookingResponse> complete(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(bookingService.driverComplete(id, user));
+    }
+
     @GetMapping("/profile")
     public ResponseEntity<Map<String, Object>> profile(@AuthenticationPrincipal User user) {
         return driverProfileRepository.findByUser(user)

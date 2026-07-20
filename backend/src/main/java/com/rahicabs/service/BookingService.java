@@ -93,9 +93,60 @@ public class BookingService {
         User driver = userRepository.findById(driverId)
                 .orElseThrow(() -> new RuntimeException("Driver not found"));
         booking.setDriver(driver);
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.ASSIGNED);
+        // 4-digit start OTP the customer shares with the driver to begin the ride
+        if (booking.getStartOtp() == null || booking.getStartOtp().isBlank()) {
+            booking.setStartOtp(String.format("%04d", new java.util.Random().nextInt(10000)));
+        }
         Booking saved = bookingRepository.save(booking);
         notificationService.onDriverAssigned(saved);
+        return BookingResponse.from(saved);
+    }
+
+    // ---- Driver ride actions (accept / reject / start-with-OTP / complete) ----
+    private Booking authorizedRide(Long bookingId, User driver) {
+        Booking b = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        if (b.getDriver() == null || !b.getDriver().getId().equals(driver.getId()))
+            throw new RuntimeException("Not authorized for this ride");
+        return b;
+    }
+
+    public BookingResponse driverAccept(Long bookingId, User driver) {
+        Booking b = authorizedRide(bookingId, driver);
+        b.setStatus(BookingStatus.ACCEPTED);
+        Booking saved = bookingRepository.save(b);
+        fireStatusNotification(saved, BookingStatus.ACCEPTED);
+        return BookingResponse.from(saved);
+    }
+
+    public BookingResponse driverReject(Long bookingId, User driver) {
+        Booking b = authorizedRide(bookingId, driver);
+        b.setDriver(null);
+        b.setStatus(BookingStatus.CONFIRMED);   // back to the pool for reassignment
+        return BookingResponse.from(bookingRepository.save(b));
+    }
+
+    public BookingResponse driverStart(Long bookingId, User driver, String otp) {
+        Booking b = authorizedRide(bookingId, driver);
+        String given = otp == null ? "" : otp.trim();
+        if (b.getStartOtp() == null || !b.getStartOtp().equals(given))
+            throw new RuntimeException("Incorrect start OTP");
+        b.setStatus(BookingStatus.IN_PROGRESS);
+        Booking saved = bookingRepository.save(b);
+        fireStatusNotification(saved, BookingStatus.IN_PROGRESS);
+        return BookingResponse.from(saved);
+    }
+
+    public BookingResponse driverComplete(Long bookingId, User driver) {
+        Booking b = authorizedRide(bookingId, driver);
+        b.setStatus(BookingStatus.COMPLETED);
+        driverProfileRepository.findByUser(driver).ifPresent(p -> {
+            p.setTotalRides((p.getTotalRides() == null ? 0 : p.getTotalRides()) + 1);
+            driverProfileRepository.save(p);
+        });
+        Booking saved = bookingRepository.save(b);
+        fireStatusNotification(saved, BookingStatus.COMPLETED);
         return BookingResponse.from(saved);
     }
 
@@ -144,7 +195,11 @@ public class BookingService {
     // ---- DRIVER ----
     public List<BookingResponse> getDriverRides(User driver) {
         return bookingRepository.findByDriverOrderByCreatedAtDesc(driver)
-                .stream().map(BookingResponse::from).collect(Collectors.toList());
+                .stream().map(b -> {
+                    BookingResponse r = BookingResponse.from(b);
+                    r.setStartOtp(null);   // the driver must ask the customer for it
+                    return r;
+                }).collect(Collectors.toList());
     }
 
     public BookingResponse updateRideStatus(Long bookingId, BookingStatus status, User driver) {

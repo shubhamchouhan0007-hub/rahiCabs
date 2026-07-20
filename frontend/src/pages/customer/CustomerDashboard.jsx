@@ -82,7 +82,25 @@ function MyBookings() {
                 </div>
               </div>
             )}
+            {booking.remainingAmount != null && ['ASSIGNED','ACCEPTED','IN_PROGRESS'].includes(booking.status) && (
+              <div className="detail-row">
+                <i className="fas fa-wallet"></i>
+                <div>
+                  <strong>Pay to driver:</strong> ₹{Number(booking.remainingAmount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                </div>
+              </div>
+            )}
           </div>
+
+          {booking.startOtp && ['ASSIGNED','ACCEPTED'].includes(booking.status) && (
+            <div className="booking-otp">
+              <i className="fas fa-key"></i>
+              <div>
+                <span className="booking-otp-label">Share this OTP with your driver to start the ride</span>
+                <span className="booking-otp-code">{booking.startOtp}</span>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

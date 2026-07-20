@@ -375,3 +375,16 @@
     flex-direction: column;
   }
 }
+
+/* Ride-start OTP shown to the customer (share with driver) */
+.booking-otp {
+  display: flex; align-items: center; gap: 12px;
+  margin: 14px 16px 16px; padding: 12px 16px;
+  background: #f0fdfa; border: 1px dashed #5eead4; border-radius: 10px;
+}
+.booking-otp > i { color: #0f766e; font-size: 1.1rem; }
+.booking-otp-label { display: block; font-size: .8rem; color: #475569; }
+.booking-otp-code {
+  display: block; font-size: 1.6rem; font-weight: 800; letter-spacing: .3em;
+  color: #134e4a; margin-top: 2px;
+}

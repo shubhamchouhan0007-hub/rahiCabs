@@ -21,9 +21,14 @@ public class BookingResponse {
     private String dropLocation;
     private ServiceType serviceType;
     private BookingStatus status;
+    private String customerName;
+    private String customerPhone;
     private LocalDateTime scheduledAt;
     private LocalDateTime createdAt;
     private Double fare;
+    private Double advanceAmount;
+    private Double remainingAmount;
+    private String startOtp;   // shown to the customer only; nulled for the driver
     private String notes;
 
     public static BookingResponse from(Booking b) {
@@ -36,9 +41,16 @@ public class BookingResponse {
         r.setScheduledAt(b.getScheduledAt());
         r.setCreatedAt(b.getCreatedAt());
         r.setFare(b.getFare());
+        r.setAdvanceAmount(b.getAdvanceAmount());
+        r.setRemainingAmount(b.getRemainingAmount());
+        r.setStartOtp(b.getStartOtp());
         r.setNotes(b.getNotes());
         r.setGuestName(b.getGuestName());
         r.setGuestPhone(b.getGuestPhone());
+        if (b.getCustomer() != null) {
+            r.setCustomerName(b.getCustomer().getFullName());
+            r.setCustomerPhone(b.getCustomer().getPhoneNumber());
+        }
         if (b.getClient() != null) {
             r.setClientId(b.getClient().getId());
             r.setClientName(b.getClient().getName());

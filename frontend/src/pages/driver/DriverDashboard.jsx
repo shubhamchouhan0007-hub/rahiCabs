@@ -68,7 +68,7 @@ function DriverHome() {
   const today     = new Date().toDateString()
   const active    = rides.find(r => r.status === 'IN_PROGRESS')
   const todayRides = rides.filter(r => r.scheduledAt && new Date(r.scheduledAt).toDateString() === today)
-  const pending   = rides.filter(r => r.status === 'PENDING' || r.status === 'CONFIRMED')
+  const pending   = rides.filter(r => ['PENDING','CONFIRMED','ASSIGNED','ACCEPTED'].includes(r.status))
 
   if (!stats) return <Spinner />
 
@@ -176,15 +176,15 @@ function DriverRides() {
   const load = () => api.get('/driver/rides').then(r => { setRides(r.data); setLoading(false) })
   useEffect(() => { load(); const id = setInterval(load, 30000); return () => clearInterval(id) }, [])
 
-  const updateStatus = async (id, status) => {
+  const updateStatus = async (id, status) => {  // legacy generic status change (unused by new flow)
     try { await api.put(`/driver/rides/${id}/status?status=${status}`); load(); toast('Status updated!', 'success') }
     catch { toast('Failed to update status.', 'error') }
   }
 
   const tabs = [
     { id:'ALL',         label:'All' },
-    { id:'PENDING',     label:'Pending' },
-    { id:'CONFIRMED',   label:'Confirmed' },
+    { id:'ASSIGNED',    label:'New' },
+    { id:'ACCEPTED',    label:'Accepted' },
     { id:'IN_PROGRESS', label:'Active' },
     { id:'COMPLETED',   label:'Completed' },
   ]
@@ -207,7 +207,7 @@ function DriverRides() {
       </div>
       {loading ? <Spinner /> : visible.length === 0
         ? <div className="empty-state"><i className="fas fa-car" /><p>No {tab !== 'ALL' ? tab.toLowerCase().replace('_',' ') : ''} rides.</p></div>
-        : <RideCards rides={visible} onUpdateStatus={updateStatus} detailed />}
+        : <RideCards rides={visible} onReload={load} detailed />}
     </div>
   )
 }
@@ -392,16 +392,12 @@ function DriverProfile() {
 
 // ── Ride Cards ────────────────────────────────────────────────────────────────
 
-function RideCards({ rides, onUpdateStatus, detailed }) {
-  const allowed = { CONFIRMED: 'IN_PROGRESS', IN_PROGRESS: 'COMPLETED' }
-  const actionLabel = { IN_PROGRESS: 'Start Ride', COMPLETED: 'Complete Ride' }
-
+function RideCards({ rides, onReload, detailed }) {
   return (
     <div className="ride-cards">
       {rides.map(r => {
-        const customer = r.clientName || r.guestName || '—'
-        const phone    = r.clientPhone || r.guestPhone
-        const nextStatus = allowed[r.status]
+        const customer = r.customerName || r.clientName || r.guestName || '—'
+        const phone    = r.customerPhone || r.clientPhone || r.guestPhone
 
         return (
           <div key={r.id} className={`ride-card ride-card-${r.status?.toLowerCase()}`}>
@@ -443,18 +439,85 @@ function RideCards({ rides, onUpdateStatus, detailed }) {
               </div>
             )}
 
-            {onUpdateStatus && nextStatus && (
-              <button className={`ride-action-btn ${nextStatus === 'IN_PROGRESS' ? 'start' : 'complete'}`}
-                onClick={() => onUpdateStatus(r.id, nextStatus)}>
-                <i className={`fas fa-${nextStatus === 'IN_PROGRESS' ? 'play' : 'check'}`} />
-                {actionLabel[nextStatus]}
-              </button>
-            )}
+            {onReload && <RideActions ride={r} onReload={onReload} />}
           </div>
         )
       })}
     </div>
   )
+}
+
+// Per-ride action buttons that follow the lifecycle:
+// ASSIGNED → Accept/Reject · ACCEPTED → Start (with customer OTP) · IN_PROGRESS → Complete (collect balance)
+function RideActions({ ride, onReload }) {
+  const [otp, setOtp]       = useState('')
+  const [showOtp, setShow]  = useState(false)
+  const [busy, setBusy]     = useState(false)
+
+  const run = async (fn, okMsg) => {
+    setBusy(true)
+    try { await fn(); okMsg && toast(okMsg, 'success'); onReload && onReload() }
+    catch (e) { toast(e?.response?.data?.message || 'Action failed.', 'error') }
+    finally { setBusy(false) }
+  }
+
+  const remaining = ride.remainingAmount != null
+    ? Number(ride.remainingAmount).toLocaleString('en-IN', { maximumFractionDigits: 0 }) : null
+
+  if (ride.status === 'ASSIGNED') {
+    return (
+      <div className="ride-actions-row">
+        <button className="ride-action-btn start" disabled={busy}
+          onClick={() => run(() => api.put(`/driver/rides/${ride.id}/accept`), 'Ride accepted!')}>
+          <i className="fas fa-check" /> Accept
+        </button>
+        <button className="ride-action-btn reject" disabled={busy}
+          onClick={() => run(() => api.put(`/driver/rides/${ride.id}/reject`), 'Ride declined')}>
+          <i className="fas fa-times" /> Reject
+        </button>
+      </div>
+    )
+  }
+
+  if (ride.status === 'ACCEPTED') {
+    return showOtp ? (
+      <div className="ride-otp-start">
+        <p className="ride-otp-hint"><i className="fas fa-key" /> Ask the customer for their 4-digit start OTP</p>
+        <div className="ride-otp-row">
+          <input className="ride-otp-input" inputMode="numeric" maxLength={4} value={otp}
+            onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="0000" />
+          <button className="ride-action-btn start" disabled={busy || otp.length !== 4}
+            onClick={() => run(() => api.put(`/driver/rides/${ride.id}/start`, { otp }), 'Ride started!')}>
+            <i className="fas fa-play" /> Start
+          </button>
+        </div>
+      </div>
+    ) : (
+      <button className="ride-action-btn start" onClick={() => setShow(true)}>
+        <i className="fas fa-play" /> Start Ride
+      </button>
+    )
+  }
+
+  if (ride.status === 'IN_PROGRESS') {
+    return (
+      <>
+        {remaining && (
+          <div className="ride-collect"><i className="fas fa-hand-holding-usd" /> Collect ₹{remaining} from customer</div>
+        )}
+        <button className="ride-action-btn complete" disabled={busy}
+          onClick={() => run(() => api.put(`/driver/rides/${ride.id}/complete`), 'Ride completed!')}>
+          <i className="fas fa-check" /> Complete Ride
+        </button>
+      </>
+    )
+  }
+
+  if (ride.status === 'COMPLETED' && remaining) {
+    return <div className="ride-collected"><i className="fas fa-check-circle" /> Balance to collect: ₹{remaining}</div>
+  }
+
+  return null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -483,7 +546,7 @@ function StatCard({ label, value, icon, color, to }) {
 }
 
 function StatusBadge({ status }) {
-  const map = { PENDING:'warning', CONFIRMED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
+  const map = { PENDING:'warning', CONFIRMED:'info', ASSIGNED:'warning', ACCEPTED:'info', IN_PROGRESS:'purple', COMPLETED:'success', CANCELLED:'danger' }
   return <span className={`badge badge-${map[status]||'info'}`}>{status?.replace('_',' ')}</span>
 }
 
