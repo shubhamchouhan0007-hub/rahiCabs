@@ -70,6 +70,8 @@ public class DataInitializer implements ApplicationRunner {
             entry("fare.rt_slab3",      "10"),
             // Flat service charge + GST added to one-way, round-trip & hourly fares
             entry("fare.service_gst",   "148"),
+            // Minimum total fare — every fare is floored to this
+            entry("fare.min_total",     "999"),
             // Outstation base + per-km, by vehicle class
             entry("fare.outstation.sedan_base",  "1500"),
             entry("fare.outstation.sedan_perkm", "11"),

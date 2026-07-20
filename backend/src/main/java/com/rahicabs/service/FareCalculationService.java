@@ -76,6 +76,9 @@ public class FareCalculationService {
                 totalFare = Math.max(minimumFare, distance * farePerKm);
         }
 
+        // Floor every fare at the minimum total (default ₹999).
+        totalFare = Math.max(totalFare, settings.getDouble("fare.min_total", 999.0));
+
         double advanceAmount = totalFare * (advancePct / 100.0);
         double remaining     = totalFare - advanceAmount;
 
@@ -110,6 +113,7 @@ public class FareCalculationService {
         double time     = hours >= 12 ? hours * reducedHourly : hours * 60 * perMin;
         double fuelRate = km < 200 ? fuelBase : (km <= 250 ? fuelBase - 1 : fuelBase - 2);
         double total    = time + km * fuelRate + serviceGst();
+        total = Math.max(total, settings.getDouble("fare.min_total", 999.0));  // floor at min total
 
         double advance = total * (advancePct / 100.0);
         return FareCalculationResponse.builder()

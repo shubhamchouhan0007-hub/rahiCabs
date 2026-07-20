@@ -536,6 +536,7 @@ function AdminSettings() {
             <div className="settings-grid">
               <SettingField label="Advance Payment (%)" type="number" value={settings['fare.advance_pct'] || ''} onChange={v => set('fare.advance_pct', v)} hint="Booking advance, e.g. 15" />
               <SettingField label="Service Charge + GST (₹)" type="number" value={settings['fare.service_gst'] || ''} onChange={v => set('fare.service_gst', v)} hint="Flat, added to one-way / round-trip / hourly" />
+              <SettingField label="Minimum Total Fare (₹)" type="number" value={settings['fare.min_total'] || ''} onChange={v => set('fare.min_total', v)} hint="Every fare floored to this, e.g. 999" />
             </div>
 
             <h4 className="settings-group-title">One-way slabs (₹/km)</h4>
