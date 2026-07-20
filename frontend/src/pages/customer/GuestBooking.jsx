@@ -42,7 +42,7 @@ const POPULAR_AIRPORTS = [
 
 export default function GuestBooking() {
   const navigate = useNavigate();
-  const { login: custLogin } = useCustomer();
+  const { login: custLogin, isAuthenticated, customer, token: customerToken } = useCustomer();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
 
@@ -87,15 +87,15 @@ export default function GuestBooking() {
   const [serviceType, setServiceType] = useState(
     paramService && SERVICES.find(s => s.type === paramService) ? paramService : ''
   );
-  const [name, setName]               = useState('');
-  const [email, setEmail]             = useState('');
+  const [name, setName]               = useState(customer?.fullName && customer.fullName !== 'Customer' ? customer.fullName : '');
+  const [email, setEmail]             = useState(customer?.email || '');
   const [journeyDate, setJourneyDate] = useState('');
   const [returnDate, setReturnDate]   = useState('');
   const [vehicleType, setVehicleType] = useState('SEDAN');  // OUTSTATION / HOURLY_RENTAL
   const [rentalPackage, setRentalPackage] = useState({ h: 3, k: 50 });  // HOURLY_RENTAL
 
   /* ── Step 3: Phone + OTP ───────────────── */
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(customer?.phoneNumber || '');
   const [otp, setOtp]                 = useState(['', '', '', '', '', '']);
   const otpRefs                        = useRef([]);
   const [otpSent, setOtpSent]         = useState(false);
@@ -492,6 +492,33 @@ export default function GuestBooking() {
     } finally { setLoading(false); }
   };
 
+  // Already logged in → no OTP. Book straight away using the session token.
+  const bookLoggedIn = async () => {
+    setLoading(true); setError('');
+    try {
+      const isHourly = serviceType === 'HOURLY_RENTAL';
+      const drop = dropCoords || pickupCoords;
+      const res = await customerApi.createBooking({
+        name, phoneNumber, email,
+        pickupLocation, pickupLatitude: pickupCoords.lat, pickupLongitude: pickupCoords.lng,
+        dropLocation: dropLocation || pickupLocation, dropLatitude: drop.lat, dropLongitude: drop.lng,
+        serviceType,
+        scheduledAt: journeyDate ? journeyDate + ':00' : null,
+        distance: fareDetails.distance, duration: fareDetails.duration, totalFare: fareDetails.totalFare,
+        notes: [
+          returnDate ? `Return date: ${returnDate}` : '',
+          serviceType === 'OUTSTATION' ? `Vehicle: ${vehicleType}` : '',
+          isHourly ? `Rental: ${vehicleType} ${rentalPackage.h}hr/${rentalPackage.k}km` : '',
+        ].filter(Boolean).join(' | '),
+      }, customerToken);
+      setPaymentOrder(res.data.paymentOrder);
+      setBookingId(res.data.bookingId);
+      setStep(4);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Booking failed. Try again.');
+    } finally { setLoading(false); }
+  };
+
   /* ── Razorpay payment ────────────────────── */
   const openRazorpay = () => {
     const options = {
@@ -529,7 +556,7 @@ export default function GuestBooking() {
           <span>Rahi<strong>Cab</strong></span>
         </Link>
         <div className="gb-steps">
-          {STEPS.map((label, i) => {
+          {['Service', 'Location', isAuthenticated ? 'Review' : 'Verify', 'Payment'].map((label, i) => {
             const done = step > i + 1;
             return (
               <div
@@ -655,7 +682,7 @@ export default function GuestBooking() {
             <div className="gb-btn-row">
               <button className="gb-btn-back" onClick={() => setStep(1)}><i className="fas fa-arrow-left" /> Back</button>
               <button className="gb-btn-primary gb-btn-grow" onClick={goToVerify} disabled={loading || !pickupCoords || (serviceType !== 'HOURLY_RENTAL' && !dropCoords)}>
-                {loading ? <><i className="fas fa-spinner fa-spin" /> Calculating…</> : <><i className="fas fa-shield-alt" /> Verify Phone &amp; Continue</>}
+                {loading ? <><i className="fas fa-spinner fa-spin" /> Calculating…</> : <><i className="fas fa-shield-alt" /> {isAuthenticated ? 'Review Fare & Continue' : 'Verify Phone & Continue'}</>}
               </button>
             </div>
           </div>
@@ -848,7 +875,34 @@ export default function GuestBooking() {
         {/* ══════════════════════════════════════
             STEP 3 — PHONE + OTP
         ══════════════════════════════════════ */}
-        {step === 3 && (
+        {/* STEP 3 (logged-in) — Review & Pay, no OTP needed */}
+        {step === 3 && isAuthenticated && (
+          <div className="gb-otp-card">
+            <div className="gb-otp-icon-wrap">
+              <div className="gb-otp-icon"><i className="fas fa-user-check" /></div>
+            </div>
+            <h2>Review &amp; Confirm</h2>
+            <p className="gb-otp-desc">Logged in as <strong>+91 {phoneNumber}</strong> — no OTP needed.</p>
+            {fareDetails && (
+              <div className="gb-review-fare">
+                <div><span>Distance</span><strong>{fareDetails.distance} km</strong></div>
+                <div><span>Total fare</span><strong>₹{fareDetails.totalFare.toLocaleString('en-IN')}</strong></div>
+                <div><span>Advance (15%)</span><strong>₹{fareDetails.advanceAmount.toLocaleString('en-IN')}</strong></div>
+                <div><span>Pay to driver</span><strong>₹{fareDetails.remainingAmount.toLocaleString('en-IN')}</strong></div>
+              </div>
+            )}
+            <button className="gb-btn-primary" onClick={bookLoggedIn} disabled={loading}>
+              {loading
+                ? <><i className="fas fa-spinner fa-spin" /> Processing…</>
+                : <><i className="fas fa-arrow-right" /> Confirm &amp; Pay ₹{fareDetails ? fareDetails.advanceAmount.toLocaleString('en-IN') : ''}</>}
+            </button>
+            <button className="gb-btn-ghost" style={{ marginTop: 8 }} onClick={() => setStep(2)}>
+              <i className="fas fa-arrow-left" /> Back
+            </button>
+          </div>
+        )}
+
+        {step === 3 && !isAuthenticated && (
           <div className="gb-otp-card">
             <div className="gb-otp-icon-wrap">
               <div className="gb-otp-icon"><i className="fas fa-mobile-alt" /></div>

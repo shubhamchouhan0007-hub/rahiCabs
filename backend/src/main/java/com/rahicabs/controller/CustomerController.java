@@ -73,26 +73,36 @@ public class CustomerController {
 
     @PostMapping("/book")
     public ResponseEntity<Map<String, Object>> createBooking(
-            @Valid @RequestBody CustomerBookingRequest request) {
-        
-        // Verify the phone number via the Firebase ID token (OTP done client-side by Firebase)
-        String verifiedPhone;
-        try {
-            verifiedPhone = firebaseService.verifyAndGetPhone(request.getFirebaseIdToken());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
-        }
-        if (!verifiedPhone.equals(request.getPhoneNumber())) {
-            return ResponseEntity.badRequest().body(Map.of("success", false,
-                    "message", "Verified phone does not match the booking phone number."));
-        }
+            @Valid @RequestBody CustomerBookingRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authToken) {
 
-        // Get or create customer
-        Customer customer = customerService.getOrCreateCustomer(
-                request.getPhoneNumber(),
-                request.getName(),
-                request.getEmail()
-        );
+        Customer customer;
+        if (authToken != null && !authToken.isBlank()) {
+            // Already-logged-in customer: their session already proves phone ownership,
+            // so no OTP is needed. Trust the phone on the token, not the request body.
+            try {
+                Customer session = getCustomerFromToken(authToken);
+                customer = customerService.getOrCreateCustomer(
+                        session.getPhoneNumber(), request.getName(), request.getEmail());
+            } catch (Exception e) {
+                return ResponseEntity.status(401).body(Map.of("success", false,
+                        "message", "Session expired. Please log in again."));
+            }
+        } else {
+            // Guest booking: verify the phone via the Firebase OTP token.
+            String verifiedPhone;
+            try {
+                verifiedPhone = firebaseService.verifyAndGetPhone(request.getFirebaseIdToken());
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+            }
+            if (!verifiedPhone.equals(request.getPhoneNumber())) {
+                return ResponseEntity.badRequest().body(Map.of("success", false,
+                        "message", "Verified phone does not match the booking phone number."));
+            }
+            customer = customerService.getOrCreateCustomer(
+                    request.getPhoneNumber(), request.getName(), request.getEmail());
+        }
 
         // Calculate advance amount
         double advanceAmount = request.getTotalFare() * 0.15;

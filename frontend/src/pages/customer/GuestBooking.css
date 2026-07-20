@@ -513,3 +513,16 @@
   .gb-otp-boxes { gap: 7px; }
   .gb-otp-box { width: 38px; height: 44px; font-size: 18px; }
 }
+
+/* Logged-in "Review & Confirm" fare summary (skip-OTP path) */
+.gb-review-fare {
+  width: 100%; margin: 4px 0 18px; border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px; overflow: hidden; background: #fafafa;
+}
+.gb-review-fare > div {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 16px; font-size: .92rem; border-bottom: 1px solid #eee;
+}
+.gb-review-fare > div:last-child { border-bottom: none; }
+.gb-review-fare span { color: #6b7280; }
+.gb-review-fare strong { color: #134e4a; font-weight: 700; }

@@ -52,6 +52,7 @@ public class CustomerBookingRequest {
 
     private String notes;
 
-    @NotBlank(message = "Phone verification token is required")
+    // Required for guest bookings (proves phone ownership via OTP). Omitted when an
+    // already-logged-in customer books via their session token (Authorization header).
     private String firebaseIdToken;
 }

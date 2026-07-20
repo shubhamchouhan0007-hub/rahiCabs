@@ -21,9 +21,10 @@ const customerApi = {
   calculateFare: (data) => 
     axios.post(`${API_URL}/customer/calculate-fare`, data),
 
-  // Booking
-  createBooking: (bookingData) => 
-    axios.post(`${API_URL}/customer/book`, bookingData),
+  // Booking — pass the customer's session token to book without OTP (logged-in users)
+  createBooking: (bookingData, token) =>
+    axios.post(`${API_URL}/customer/book`, bookingData,
+      token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
 
   // Payment
   verifyPayment: (paymentData) => 
