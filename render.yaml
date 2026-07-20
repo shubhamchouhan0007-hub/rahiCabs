@@ -15,6 +15,10 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      # Keep-alive OFF on free tiers: pinging the DB 24/7 burns metered compute
+      # hours. Let the DB idle; use an external cron pinger to keep things warm.
+      - key: KEEPALIVE_ENABLED
+        value: "false"
       # ---- Database (Neon) ----
       - key: DB_URL
         sync: false
