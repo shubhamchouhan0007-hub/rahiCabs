@@ -1,0 +1,38 @@
+# Render Blueprint for the RahiCab Spring Boot backend.
+# Deploy: Render dashboard → New → Blueprint → connect this repo.
+# Secrets (sync:false) are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: rahicab-backend
+    runtime: docker
+    repo: https://github.com/shubhamchouhan0007-hub/rahiCabs
+    branch: feature/version2
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    healthCheckPath: /api/public/settings
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # ---- Database (Neon) ----
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # ---- Secrets ----
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      # ---- CORS (your frontend origins) ----
+      - key: CORS_ORIGINS
+        sync: false
