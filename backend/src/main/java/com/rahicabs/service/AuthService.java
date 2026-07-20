@@ -50,6 +50,7 @@ public class AuthService {
                     .vehicleType(request.getVehicleType())
                     .aadhaarNumber(request.getAadhaarNumber())
                     .licenseNumber(request.getLicenseNumber())
+                    .permitNumber(request.getPermitNumber())
                     .build();
             driverProfileRepository.save(profile);
         }

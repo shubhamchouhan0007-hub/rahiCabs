@@ -112,7 +112,7 @@ export default function Register() {
                       <i className="fas fa-car-side" />
                       <select value={form.vehicleType} onChange={set('vehicleType')}>
                         <option value="">Select type…</option>
-                        {['SEDAN','SUV','HATCHBACK','TEMPO','BUS'].map(t => <option key={t}>{t}</option>)}
+                        {['MINI','SEDAN','SUV','TEMPO','BUS'].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                   </div>

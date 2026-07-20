@@ -20,6 +20,7 @@ public class DriverProfile {
     private String vehicleType;
     private String aadhaarNumber;
     private String licenseNumber;
+    private String permitNumber;
 
     @Builder.Default
     private Boolean isAvailable = true;

@@ -250,7 +250,7 @@ function AdminDrivers() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'' })
+  const [form, setForm] = useState({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'', permitNumber:'' })
   const [saving, setSaving] = useState(false)
 
   const load = () => api.get('/admin/drivers').then(r => { setDrivers(r.data); setLoading(false) })
@@ -261,7 +261,7 @@ function AdminDrivers() {
     try {
       await api.post('/admin/drivers', form)
       toast('Driver added!', 'success')
-      setShowModal(false); setForm({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'' })
+      setShowModal(false); setForm({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'', permitNumber:'' })
       load()
     } catch(err) {
       toast(err.response?.data?.error || 'Failed to add driver.', 'error')
@@ -301,13 +301,16 @@ function AdminDrivers() {
                 <label>Vehicle Type</label>
                 <select value={form.vehicleType} onChange={e => setForm(f=>({...f,vehicleType:e.target.value}))}>
                   <option value="">Select…</option>
-                  {['SEDAN','SUV','HATCHBACK','TEMPO','BUS'].map(t => <option key={t}>{t}</option>)}
+                  {['MINI','SEDAN','SUV','TEMPO','BUS'].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>
             <div className="form-row">
               <FormField label="Aadhaar Number" value={form.aadhaarNumber} onChange={v => setForm(f=>({...f,aadhaarNumber:v}))} placeholder="XXXX XXXX XXXX" />
               <FormField label="License Number" value={form.licenseNumber} onChange={v => setForm(f=>({...f,licenseNumber:v}))} placeholder="BR-XXXXXXXXXX" />
+            </div>
+            <div className="form-row">
+              <FormField label="Permit Number" value={form.permitNumber} onChange={v => setForm(f=>({...f,permitNumber:v}))} placeholder="Transport permit no." />
             </div>
             <div className="modal-actions">
               <button type="button" className="btn-ghost-sm" onClick={() => setShowModal(false)}>Cancel</button>
@@ -326,7 +329,7 @@ function AdminDrivers() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Vehicle</th><th>Aadhaar</th><th>License</th><th>Rides</th><th>Rating</th><th>Available</th><th>Action</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Vehicle</th><th>Aadhaar</th><th>License</th><th>Permit</th><th>Rides</th><th>Rating</th><th>Available</th><th>Action</th></tr>
               </thead>
               <tbody>
                 {drivers.map(d => (
@@ -337,6 +340,7 @@ function AdminDrivers() {
                     <td>{d.vehicleNumber || '—'} {d.vehicleType && <span className="tag">{d.vehicleType}</span>}</td>
                     <td>{d.aadhaarNumber || '—'}</td>
                     <td>{d.licenseNumber || '—'}</td>
+                    <td>{d.permitNumber || '—'}</td>
                     <td>{d.totalRides}</td>
                     <td>⭐ {d.rating}</td>
                     <td><span className={`badge badge-${d.isAvailable ? 'success' : 'danger'}`}>{d.isAvailable ? 'Yes' : 'No'}</span></td>

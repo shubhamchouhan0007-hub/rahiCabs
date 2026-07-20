@@ -25,4 +25,5 @@ public class RegisterRequest {
     private String vehicleType;
     private String aadhaarNumber;
     private String licenseNumber;
+    private String permitNumber;
 }

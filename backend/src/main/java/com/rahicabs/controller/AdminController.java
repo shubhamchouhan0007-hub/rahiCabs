@@ -88,6 +88,7 @@ public class AdminController {
             m.put("vehicleType",    p.getVehicleType()    != null ? p.getVehicleType()    : "");
             m.put("aadhaarNumber",  p.getAadhaarNumber()  != null ? "****" + p.getAadhaarNumber().replaceAll(".*(.{4})$","$1") : "");
             m.put("licenseNumber",  p.getLicenseNumber()  != null ? p.getLicenseNumber()  : "");
+            m.put("permitNumber",   p.getPermitNumber()   != null ? p.getPermitNumber()   : "");
             m.put("isAvailable",   p.getIsAvailable());
             m.put("totalRides",    p.getTotalRides());
             m.put("rating",        p.getRating());
@@ -118,6 +119,7 @@ public class AdminController {
             .vehicleType(body.get("vehicleType"))
             .aadhaarNumber(body.get("aadhaarNumber"))
             .licenseNumber(body.get("licenseNumber"))
+            .permitNumber(body.get("permitNumber"))
             .build();
         driverProfileRepository.save(profile);
 
