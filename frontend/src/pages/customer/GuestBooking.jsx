@@ -891,6 +891,9 @@ export default function GuestBooking() {
                 <div><span>Pay to driver</span><strong>₹{fareDetails.remainingAmount.toLocaleString('en-IN')}</strong></div>
               </div>
             )}
+            <div className="gb-toll-note">
+              <i className="fas fa-info-circle" /> Toll, parking &amp; state entry taxes are <strong>extra</strong> — paid directly to the driver as applicable.
+            </div>
             <button className="gb-btn-primary" onClick={bookLoggedIn} disabled={loading}>
               {loading
                 ? <><i className="fas fa-spinner fa-spin" /> Processing…</>
@@ -981,6 +984,10 @@ export default function GuestBooking() {
                 <span className="gb-fare-label">Total Fare</span>
                 <span className="gb-fare-big">₹{fareDetails.totalFare}</span>
                 <span className="gb-fare-sub">{fareDetails.distance} km · ~{fareDetails.duration} min</span>
+              </div>
+
+              <div className="gb-toll-note">
+                <i className="fas fa-info-circle" /> Toll, parking &amp; state entry taxes are <strong>extra</strong> — paid directly to the driver as applicable.
               </div>
 
               {/* Journey strip */}

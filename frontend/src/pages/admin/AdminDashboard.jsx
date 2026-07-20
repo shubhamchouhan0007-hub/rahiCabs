@@ -6,6 +6,9 @@ import { useToast } from '../../context/ToastContext'
 import { fmtDate, fmtDateTime } from '../../utils/format'
 import '../client/Client.css'
 
+// Human-friendly unique ride reference (e.g. RC-00042)
+export const rideId = (id) => 'RC-' + String(id ?? '').padStart(5, '0')
+
 const NAV = [
   { path: '/admin',           label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
   { path: '/admin/bookings',  label: 'Bookings',  icon: 'fas fa-list' },
@@ -207,13 +210,13 @@ function AdminBookings() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>#</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Scheduled</th><th>Fare</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
+                <tr><th>Ride ID</th><th>Client</th><th>Pickup → Drop</th><th>Service</th><th>Scheduled</th><th>Fare</th><th>Status</th><th>Driver</th><th>Assign Driver</th><th>Update Status</th></tr>
               </thead>
               <tbody>
                 {visible.map(b => (
                   <tr key={b.id}>
-                    <td>#{b.id}</td>
-                    <td>{b.clientName || b.guestName || '—'}<br /><small className="muted">{b.clientPhone || b.guestPhone || ''}</small></td>
+                    <td><b>{rideId(b.id)}</b></td>
+                    <td>{b.customerName || b.clientName || b.guestName || '—'}<br /><small className="muted">{b.customerPhone || b.clientPhone || b.guestPhone || ''}</small></td>
                     <td>{b.pickupLocation}<br /><small className="muted">→ {b.dropLocation}</small></td>
                     <td><span className="tag">{b.serviceType.replace('_',' ')}</span></td>
                     <td><small>{fmtDateTime(b.scheduledAt || b.createdAt)}</small></td>

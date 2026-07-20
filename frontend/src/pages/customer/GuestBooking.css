@@ -526,3 +526,11 @@
 .gb-review-fare > div:last-child { border-bottom: none; }
 .gb-review-fare span { color: #6b7280; }
 .gb-review-fare strong { color: #134e4a; font-weight: 700; }
+
+/* Toll/parking extra-charges note (#6) */
+.gb-toll-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+  padding: 10px 12px; margin: 12px 0; font-size: .82rem; color: #92400e; line-height: 1.4;
+}
+.gb-toll-note i { color: #d97706; margin-top: 2px; flex-shrink: 0; }
