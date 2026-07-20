@@ -248,3 +248,32 @@
   .earnings-hero-grid { grid-template-columns: 1fr 1fr; }
   .active-ride-banner { flex-direction: column; }
 }
+
+/* Driver notification bell + panel (new-ride alerts) */
+.drv-notif { position: fixed; top: 14px; right: 20px; z-index: 900; }
+.drv-bell {
+  position: relative; width: 44px; height: 44px; border-radius: 50%;
+  background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(0,0,0,.1);
+  color: #134e4a; font-size: 1.1rem; cursor: pointer;
+}
+.drv-bell:hover { background: #f8fafc; }
+.drv-bell-badge {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px;
+  background: #ef4444; color: #fff; border-radius: 10px; font-size: .72rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; padding: 0 5px; border: 2px solid #fff;
+}
+.drv-notif-panel {
+  position: absolute; top: 52px; right: 0; width: 300px; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); overflow: hidden;
+}
+.drv-notif-head { padding: 12px 16px; font-weight: 800; color: #134e4a; border-bottom: 1px solid #f1f5f9; }
+.drv-notif-empty { padding: 20px 16px; color: #64748b; font-size: .88rem; text-align: center; }
+.drv-notif-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer;
+  border-bottom: 1px solid #f1f5f9; transition: background .15s;
+}
+.drv-notif-item:hover { background: #f0fdfa; }
+.drv-notif-item > i { color: #0f766e; }
+.drv-notif-item b { display: block; font-size: .88rem; color: #1e293b; }
+.drv-notif-item small { display: block; color: #64748b; font-size: .78rem; margin-top: 2px; }
+@media (max-width: 640px) { .drv-notif { top: 10px; right: 12px; } .drv-notif-panel { width: 84vw; } }

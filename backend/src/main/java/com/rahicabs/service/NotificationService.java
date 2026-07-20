@@ -167,6 +167,21 @@ public class NotificationService {
 
         pushCustomer(b, "Driver assigned 🚕",
             driverName + " is assigned to booking #" + b.getId() + ". Call: " + driverPhone);
+
+        // → Driver email (email instead of SMS to save message charges)
+        String driverEmail = b.getDriver().getEmail();
+        if (driverEmail != null && !driverEmail.isBlank() && !driverEmail.endsWith("@rahicab.internal")) {
+            String rideRef = "RC-" + String.format("%05d", b.getId());
+            String dbody = "<p>Hi " + driverName + ", a new ride has been assigned to you.</p>"
+                + "<div class='row'><span>Ride ID</span><span><b>" + rideRef + "</b></span></div>"
+                + "<div class='row'><span>Pickup</span><span>" + b.getPickupLocation() + "</span></div>"
+                + "<div class='row'><span>Drop</span><span>" + b.getDropLocation() + "</span></div>"
+                + "<div class='row'><span>Fare</span><span>₹" + (b.getFare() != null ? b.getFare() : "-") + "</span></div>"
+                + "<div class='msg-box'>Log in to your RahiCab driver dashboard to <b>Accept</b> or <b>Reject</b> this ride. "
+                + "Ask the customer for their start OTP to begin the trip.</div>";
+            email.send(driverEmail, "New Ride Assigned — RahiCab " + rideRef,
+                EmailService.wrap("New Ride Assigned", dbody));
+        }
     }
 
     // ── Event: Ride started ───────────────────────────────────────────────────

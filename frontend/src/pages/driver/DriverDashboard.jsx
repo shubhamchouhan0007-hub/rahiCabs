@@ -17,6 +17,7 @@ const NAV = [
 export default function DriverDashboard() {
   return (
     <Layout navItems={NAV} role="DRIVER">
+      <DriverNotifications />
       <Routes>
         <Route index            element={<DriverHome />} />
         <Route path="rides"     element={<DriverRides />} />
@@ -25,6 +26,63 @@ export default function DriverDashboard() {
         <Route path="*"         element={<Navigate to="/driver" replace />} />
       </Routes>
     </Layout>
+  )
+}
+
+// Polls for newly-assigned rides and shows a bell + toast (no SMS cost).
+function DriverNotifications() {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const [assigned, setAssigned] = useState([])
+  const [open, setOpen] = useState(false)
+  const seen = useRef(null)   // ids seen so far (null until first load)
+
+  useEffect(() => {
+    let alive = true
+    const beep = () => { try { const a = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='); a.play().catch(()=>{}) } catch {} }
+    const poll = async () => {
+      try {
+        const r = await api.get('/driver/rides')
+        if (!alive) return
+        const nowAssigned = (r.data || []).filter(b => b.status === 'ASSIGNED')
+        const ids = new Set(nowAssigned.map(b => b.id))
+        if (seen.current !== null) {
+          const fresh = nowAssigned.filter(b => !seen.current.has(b.id))
+          if (fresh.length) { toast(`🚕 New ride assigned! RC-${String(fresh[0].id).padStart(5,'0')}`, 'info'); beep() }
+        }
+        seen.current = ids
+        setAssigned(nowAssigned)
+      } catch {}
+    }
+    poll()
+    const t = setInterval(poll, 30000)
+    return () => { alive = false; clearInterval(t) }
+  }, [toast])
+
+  return (
+    <div className="drv-notif">
+      <button className="drv-bell" onClick={() => setOpen(o => !o)} title="Notifications">
+        <i className="fas fa-bell" />
+        {assigned.length > 0 && <span className="drv-bell-badge">{assigned.length}</span>}
+      </button>
+      {open && (
+        <div className="drv-notif-panel">
+          <div className="drv-notif-head">Notifications</div>
+          {assigned.length === 0
+            ? <div className="drv-notif-empty">No new rides right now.</div>
+            : assigned.map(b => (
+                <div key={b.id} className="drv-notif-item"
+                  onClick={() => { setOpen(false); navigate('/driver/rides?tab=ASSIGNED') }}>
+                  <i className="fas fa-car" />
+                  <div>
+                    <b>New ride · RC-{String(b.id).padStart(5,'0')}</b>
+                    <small>{b.pickupLocation} → {b.dropLocation}</small>
+                  </div>
+                </div>
+              ))}
+        </div>
+      )}
+    </div>
   )
 }
 

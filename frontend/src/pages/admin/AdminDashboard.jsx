@@ -253,21 +253,35 @@ function AdminDrivers() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'', permitNumber:'' })
+  const [editId, setEditId] = useState(null)   // null = add, else the driver's userId
+  const emptyForm = { name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'', permitNumber:'' }
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
   const load = () => api.get('/admin/drivers').then(r => { setDrivers(r.data); setLoading(false) })
   useEffect(() => { load() }, [])
 
+  const openAdd = () => { setEditId(null); setForm(emptyForm); setShowModal(true) }
+  const openEdit = (d) => {
+    setEditId(d.userId)
+    setForm({
+      name: d.name || '', email: (d.email || '').endsWith('@rahicab.internal') ? '' : (d.email || ''),
+      password: '', phone: d.phone || '', vehicleNumber: d.vehicleNumber || '',
+      vehicleType: d.vehicleType || '', aadhaarNumber: '',   // masked in list — leave blank to keep
+      licenseNumber: d.licenseNumber || '', permitNumber: d.permitNumber || '',
+    })
+    setShowModal(true)
+  }
+
   const submit = async e => {
     e.preventDefault(); setSaving(true)
     try {
-      await api.post('/admin/drivers', form)
-      toast('Driver added!', 'success')
-      setShowModal(false); setForm({ name:'', email:'', password:'', phone:'', vehicleNumber:'', vehicleType:'', aadhaarNumber:'', licenseNumber:'', permitNumber:'' })
+      if (editId) { await api.put(`/admin/drivers/${editId}`, form); toast('Driver updated!', 'success') }
+      else        { await api.post('/admin/drivers', form);          toast('Driver added!', 'success') }
+      setShowModal(false); setEditId(null); setForm(emptyForm)
       load()
     } catch(err) {
-      toast(err.response?.data?.error || 'Failed to add driver.', 'error')
+      toast(err.response?.data?.error || `Failed to ${editId ? 'update' : 'add'} driver.`, 'error')
     } finally { setSaving(false) }
   }
 
@@ -282,20 +296,20 @@ function AdminDrivers() {
       <Breadcrumb current="Drivers" />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <h2 className="page-title">Drivers</h2>
-        <button className="btn-primary-sm" onClick={() => setShowModal(true)}>
+        <button className="btn-primary-sm" onClick={openAdd}>
           <i className="fas fa-plus" /> Add Driver
         </button>
       </div>
 
       {showModal && (
-        <Modal title="Add New Driver" onClose={() => setShowModal(false)}>
+        <Modal title={editId ? 'Edit Driver' : 'Add New Driver'} onClose={() => setShowModal(false)}>
           <form onSubmit={submit} className="modal-form">
             <div className="form-row">
               <FormField label="Full Name *" value={form.name} onChange={v => setForm(f=>({...f,name:v}))} placeholder="John Doe" required />
               <FormField label="Email" type="email" value={form.email} onChange={v => setForm(f=>({...f,email:v}))} placeholder="john@example.com (optional)" />
             </div>
             <div className="form-row">
-              <FormField label="Password *" type="password" value={form.password} onChange={v => setForm(f=>({...f,password:v}))} placeholder="Min 6 chars" required />
+              <FormField label={editId ? 'Password (blank = keep)' : 'Password *'} type="password" value={form.password} onChange={v => setForm(f=>({...f,password:v}))} placeholder={editId ? 'Leave blank to keep' : 'Min 6 chars'} required={!editId} />
               <FormField label="Phone" value={form.phone} onChange={v => setForm(f=>({...f,phone:v}))} placeholder="+91 XXXXX XXXXX" />
             </div>
             <div className="form-row">
@@ -309,7 +323,7 @@ function AdminDrivers() {
               </div>
             </div>
             <div className="form-row">
-              <FormField label="Aadhaar Number" value={form.aadhaarNumber} onChange={v => setForm(f=>({...f,aadhaarNumber:v}))} placeholder="XXXX XXXX XXXX" />
+              <FormField label={editId ? 'Aadhaar (blank = keep)' : 'Aadhaar Number'} value={form.aadhaarNumber} onChange={v => setForm(f=>({...f,aadhaarNumber:v}))} placeholder={editId ? 'Leave blank to keep' : 'XXXX XXXX XXXX'} />
               <FormField label="License Number" value={form.licenseNumber} onChange={v => setForm(f=>({...f,licenseNumber:v}))} placeholder="BR-XXXXXXXXXX" />
             </div>
             <div className="form-row">
@@ -347,8 +361,11 @@ function AdminDrivers() {
                     <td>{d.totalRides}</td>
                     <td>⭐ {d.rating}</td>
                     <td><span className={`badge badge-${d.isAvailable ? 'success' : 'danger'}`}>{d.isAvailable ? 'Yes' : 'No'}</span></td>
-                    <td>
-                      <button className="btn-danger-sm" onClick={() => remove(d.userId, d.name)}>
+                    <td style={{ display:'flex', gap:6 }}>
+                      <button className="btn-ghost-sm" onClick={() => openEdit(d)} title="Edit driver">
+                        <i className="fas fa-pen" />
+                      </button>
+                      <button className="btn-danger-sm" onClick={() => remove(d.userId, d.name)} title="Delete driver">
                         <i className="fas fa-trash" />
                       </button>
                     </td>

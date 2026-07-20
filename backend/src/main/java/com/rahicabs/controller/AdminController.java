@@ -126,6 +126,32 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Driver created", "id", saved.getId()));
     }
 
+    @PutMapping("/drivers/{userId}")
+    public ResponseEntity<Map<String, Object>> updateDriver(@PathVariable Long userId,
+                                                            @RequestBody Map<String, String> body) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return ResponseEntity.badRequest().body(Map.of("error", "Driver not found"));
+
+        // Only non-blank fields are updated — a blank field keeps its current value.
+        if (notBlank(body.get("name")))  user.setName(body.get("name"));
+        if (notBlank(body.get("email"))) user.setEmail(body.get("email"));
+        if (notBlank(body.get("phone"))) user.setPhone(body.get("phone"));
+        if (notBlank(body.get("password"))) user.setPassword(passwordEncoder.encode(body.get("password")));
+        userRepository.save(user);
+
+        driverProfileRepository.findByUser(user).ifPresent(p -> {
+            if (notBlank(body.get("vehicleNumber"))) p.setVehicleNumber(body.get("vehicleNumber"));
+            if (notBlank(body.get("vehicleType")))   p.setVehicleType(body.get("vehicleType"));
+            if (notBlank(body.get("aadhaarNumber"))) p.setAadhaarNumber(body.get("aadhaarNumber"));
+            if (notBlank(body.get("licenseNumber"))) p.setLicenseNumber(body.get("licenseNumber"));
+            if (notBlank(body.get("permitNumber")))  p.setPermitNumber(body.get("permitNumber"));
+            driverProfileRepository.save(p);
+        });
+        return ResponseEntity.ok(Map.of("message", "Driver updated"));
+    }
+
+    private static boolean notBlank(String s) { return s != null && !s.isBlank(); }
+
     @DeleteMapping("/drivers/{userId}")
     public ResponseEntity<Map<String, String>> deleteDriver(@PathVariable Long userId) {
         driverProfileRepository.findAll().stream()
