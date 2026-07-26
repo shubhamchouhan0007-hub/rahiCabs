@@ -59,10 +59,11 @@ public class EmailService {
               .hdr h1{color:#fff;margin:0;font-size:1.3rem;font-weight:800}
               .hdr p{color:#b8c8e8;margin:4px 0 0;font-size:.88rem}
               .body{padding:28px 32px}
-              .row{display:flex;justify-content:space-between;padding:10px 0;
+              .row{display:table;width:100%;padding:10px 0;
                    border-bottom:1px solid #e8e0d0;font-size:.9rem}
-              .row span:first-child{color:#6b7280}
-              .row span:last-child{font-weight:600;color:#1e293b}
+              .row span{display:table-cell}
+              .row span:first-child{color:#6b7280;text-align:left;padding-right:12px}
+              .row span:last-child{font-weight:600;color:#1e293b;text-align:right}
               .chip{display:inline-block;padding:4px 12px;border-radius:100px;
                     font-size:.78rem;font-weight:700}
               .chip-warning{background:#fffbeb;color:#92400e}
