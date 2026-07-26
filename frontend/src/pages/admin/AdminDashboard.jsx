@@ -332,7 +332,7 @@ function AdminDrivers() {
             <div className="modal-actions">
               <button type="button" className="btn-ghost-sm" onClick={() => setShowModal(false)}>Cancel</button>
               <button type="submit" className="btn-primary-sm" disabled={saving}>
-                {saving ? <><i className="fas fa-spinner fa-spin" /> Saving…</> : 'Add Driver'}
+                {saving ? <><i className="fas fa-spinner fa-spin" /> Saving…</> : (editId ? 'Update Driver' : 'Add Driver')}
               </button>
             </div>
           </form>

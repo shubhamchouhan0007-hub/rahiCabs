@@ -134,7 +134,11 @@ public class AdminController {
 
         // Only non-blank fields are updated — a blank field keeps its current value.
         if (notBlank(body.get("name")))  user.setName(body.get("name"));
-        if (notBlank(body.get("email"))) user.setEmail(body.get("email"));
+        if (notBlank(body.get("email")) && !body.get("email").equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.existsByEmail(body.get("email")))
+                return ResponseEntity.badRequest().body(Map.of("error", "Email already in use by another account"));
+            user.setEmail(body.get("email"));
+        }
         if (notBlank(body.get("phone"))) user.setPhone(body.get("phone"));
         if (notBlank(body.get("password"))) user.setPassword(passwordEncoder.encode(body.get("password")));
         userRepository.save(user);
