@@ -82,12 +82,13 @@ public class EmailService {
             <div class="wrap">
               <div class="hdr">
                 <h1>🚕 RahiCab</h1>
-                <p>%s</p>
+                <p>__RAHICAB_TITLE__</p>
               </div>
-              <div class="body">%s</div>
+              <div class="body">__RAHICAB_BODY__</div>
               <div class="ftr">© RahiCab · Safe &amp; Reliable Cab Service across Bihar</div>
             </div>
             </body></html>
-            """.formatted(title, body);
+            """.replace("__RAHICAB_TITLE__", title)
+                .replace("__RAHICAB_BODY__", body);
     }
 }
